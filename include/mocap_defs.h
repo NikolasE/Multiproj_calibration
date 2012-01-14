@@ -8,6 +8,10 @@
 #ifndef MOCAP_DEFS_H_
 #define MOCAP_DEFS_H_
 
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
+
+
 #include <g2o/types/slam3d/vertex_se3_quat.h>
 #include <g2o/types/slam3d/camera_parameters.h>
 #include <g2o/types/slam3d/vertex_trackxyz.h>
@@ -21,6 +25,9 @@
 #include <g2o/core/block_solver.h>
 #include <g2o/core/linear_solver.h>
 
+
+typedef pcl::PointXYZRGB point_type;
+typedef pcl::PointCloud<pcl::PointXYZRGB> point_cloud;
 
 
 struct Mocap_object {
@@ -38,16 +45,16 @@ struct Mocap_object {
 
     for (uint i=0; i<vertices.size(); ++i){
       Eigen::Vector4f c = vertices[i];
-       printf("v %i: %f %f %f", i, c.x(),c.y(), c.z());
+       printf("v %i: %f %f %f \n", i, c.x(),c.y(), c.z());
     }
 
-    for (uint i=0; i<vertices.size()-1; ++i){
-      Eigen::Vector4f v = vertices[i];
-      for (uint j=i+1; j<vertices.size(); ++j){
-        Eigen::Vector4f c = vertices[j]-v;
-        printf("rel (%i,%i): %f %f %f", i,j, c.x(),c.y(), c.z());
-      }
-    }
+//    for (uint i=0; i<vertices.size()-1; ++i){
+//      Eigen::Vector4f v = vertices[i];
+//      for (uint j=i+1; j<vertices.size(); ++j){
+//        Eigen::Vector4f c = vertices[j]-v;
+//        printf("rel (%i,%i): %f %f %f\n", i,j, c.x(),c.y(), c.z());
+//      }
+//    }
 
   }
 

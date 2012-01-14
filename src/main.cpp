@@ -28,7 +28,7 @@ void mouseHandler(int event, int x, int y, int flags, void* param){
   if (img->nChannels == 1){
     cout << "value " << cvGet2D(img,y,x).val[0] << endl;
   }
-    else
+  else
   {
     CvScalar c = cvGet2D(img,y,x);
     cout << "col: " << c.val[0] << " " << c.val[1] << " " << c.val[2] << endl;
@@ -36,19 +36,19 @@ void mouseHandler(int event, int x, int y, int flags, void* param){
 }
 
 void markGreen(IplImage* img){
-//  for (int x=0; x<img->width; x++)
-//    for (int y=0; y<img->height; y++){
-//      CvScalar c = cvGet2D(img,y,x);
-//
-//      double b = c.val[0];
-//      double g = c.val[1];
-//      double r = c.val[2];
-//
-//     if (b>120 && g > 120 && r < (g+b)/2.0-50)
-////      if (b < (r+g)/(2+2.5) && r > 140 && g > 160)
-//        cvSet2D(img,y,x,cvScalar(255,0,0  ));
-//
-//    }
+  //  for (int x=0; x<img->width; x++)
+  //    for (int y=0; y<img->height; y++){
+  //      CvScalar c = cvGet2D(img,y,x);
+  //
+  //      double b = c.val[0];
+  //      double g = c.val[1];
+  //      double r = c.val[2];
+  //
+  //     if (b>120 && g > 120 && r < (g+b)/2.0-50)
+  ////      if (b < (r+g)/(2+2.5) && r > 140 && g > 160)
+  //        cvSet2D(img,y,x,cvScalar(255,0,0  ));
+  //
+  //    }
 
 
 }
@@ -66,7 +66,7 @@ void imageCb(const sensor_msgs::ImageConstPtr& msg)
 
 
 
-//    markGreen(cv_image);
+    //    markGreen(cv_image);
 
     cvThreshold(cv_image,cv_image,250,255,CV_THRESH_BINARY);
 
@@ -85,29 +85,39 @@ void imageCb(const sensor_msgs::ImageConstPtr& msg)
 int  main (int argc, char** argv)
 {
 
+  Simulator sim;
   Mocap_object mo;
-  createRect(&mo, 10, 20,5);
-  mo.printObject();
+  //  createRect(&mo, 10,2,5);
+  //  mo.printObject();
+
+
+  for (float z = 1; z<10; z++)
+  {
+    printf("z: %f \n", z);
+    createRect(&mo, z,2,5);
+    sim.printProjections(&mo);
+    cvWaitKey(100);
+
+  }
+  cvWaitKey(0);
 
 
 
 
 
-
-
-//  ros::init(argc, argv, "led_finder");
-//
-//  nh = new ros::NodeHandle();
-//
-//  image_transport::ImageTransport it(*nh);
-//
-////  message_filters::Subscriber<sensor_msgs::Image> sub_rgb_img(*nh,"/camera/rgb/image_color", 5);
-//  image_transport::Subscriber sub = it.subscribe("/camera/ir/image_rect", 1, imageCb);
-//
-//  cvNamedWindow("view");
-//  cvStartWindowThread();
-//
-//
-//  ros::spin();
-//  cvDestroyWindow("view");
+  //  ros::init(argc, argv, "led_finder");
+  //
+  //  nh = new ros::NodeHandle();
+  //
+  //  image_transport::ImageTransport it(*nh);
+  //
+  ////  message_filters::Subscriber<sensor_msgs::Image> sub_rgb_img(*nh,"/camera/rgb/image_color", 5);
+  //  image_transport::Subscriber sub = it.subscribe("/camera/ir/image_rect", 1, imageCb);
+  //
+  //  cvNamedWindow("view");
+  //  cvStartWindowThread();
+  //
+  //
+  //  ros::spin();
+  //  cvDestroyWindow("view");
 }
