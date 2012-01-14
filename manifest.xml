@@ -10,11 +10,13 @@
   <url>http://ros.org/wiki/mocap</url>
   <depend package="roscpp"/>
   <depend package="pcl_ros"/>
+  <depend package="eigen"/>
   <depend package="cv_bridge"/>
+  <depend package="opencv2"/>
   <depend package="geometry_msgs"/>
   <depend package="sensor_msgs"/>
   <depend package="rosbag"/>
-
+  <depend package="image_transport"/>
 </package>
 
 

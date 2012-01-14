@@ -28,3 +28,10 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
+
+
+link_directories(/home/engelhar/ros/external/projects-g2o/lib )
+include_directories( include /usr/include/suitesparse /home/engelhar/ros/external/projects-g2o  /home/engelhar/ros/external/projects-g2o/build )
+
+rosbuild_add_executable(led_tracker src/main.cpp src/simulation.cpp)
+target_link_libraries(led_tracker   g2o_core g2o_types_slam3d g2o_solver_csparse cxsparse)
