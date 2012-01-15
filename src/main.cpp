@@ -12,12 +12,17 @@
 #include <cv_bridge/CvBridge.h>
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
+#include <ros/ros.h>
+#include <visualization_msgs/Marker.h>
+
 
 #include "mocap_defs.h"
 #include "simulation.h"
+#include "optimization.h"
+#include "visualization.h"
 using namespace sensor_msgs;
 
-ros::NodeHandle* nh;
+//ros::NodeHandle* nh;
 
 
 void mouseHandler(int event, int x, int y, int flags, void* param){
@@ -84,40 +89,90 @@ void imageCb(const sensor_msgs::ImageConstPtr& msg)
 
 int  main (int argc, char** argv)
 {
+  ros::init(argc, argv, "g2o_mocap");
+  ros::NodeHandle n;
+  ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 10);
+
+
+
 
   Simulator sim;
+  Optimizer optimizer;
   Mocap_object mo;
-  //  createRect(&mo, 10,2,5);
-  //  mo.printObject();
+  Mocap_object mo_opt;
 
 
-  for (float z = 1; z<10; z++)
+  sim.createTriangle(&mo);
+  sim.createTriangle(&mo_opt);
+  //  sim.createTriangle(&mo_fix);
+  //  optimizer.setObject(&mo);
+  //  optimizer.testVertex2Edge();
+  //  mo.getPoseFromVertices();
+
+
+  //  float z = 10;
+  //    for (float z = 1; z<=30; z++)
   {
-    printf("z: %f \n", z);
-    createRect(&mo, z,2,5);
-    sim.printProjections(&mo);
-    cvWaitKey(100);
+    //      printf("z: %f \n", z);
+    sim.trafoObject(&mo,0,0,5, 0,0,0  );
+    std::vector<CvPoint2D32f> prj = sim.computeProjections(&mo, false);
+
+    // initial position for estimation
+    sim.trafoObject(&mo_opt,0,0,7, M_PI/2,0,0);
+
+    optimizer.setCamParams(sim.c_x,sim.c_y,sim.f_x, sim.f_y);
+    optimizer.setOberservations(prj);
+    optimizer.setObject(&mo_opt);
+    optimizer.InitOptimization();
+
+//    for(int i=0; i<100; ++i)
+    {
+      ros::Time begin = ros::Time::now();
+
+      optimizer.optimize(atoi(argv[1]));
+      ros::Time end = ros::Time::now();
+
+      printf("opt took %i ms\n", int((end-begin).toNSec()/1000/1000));
+
+      mo_opt.getPoseFromVertices();
+      sendMarker(marker_pub, optimizer);
+
+      ros::Duration(0.02).sleep();
+
+    }
+
+
+    //      mo_opt.getPoseFromVertices();
+    //
+    //      float max_d;
+    //      mo.isSameObject(mo_opt,0.1, &max_d);
+    //      printf("max_dist: %f\n",max_d);
 
   }
-  cvWaitKey(0);
+
+
+//  while (ros::ok())
+//    sendMarker(marker_pub, optimizer);
 
 
 
-
-
-  //  ros::init(argc, argv, "led_finder");
-  //
-  //  nh = new ros::NodeHandle();
-  //
-  //  image_transport::ImageTransport it(*nh);
-  //
-  ////  message_filters::Subscriber<sensor_msgs::Image> sub_rgb_img(*nh,"/camera/rgb/image_color", 5);
-  //  image_transport::Subscriber sub = it.subscribe("/camera/ir/image_rect", 1, imageCb);
-  //
-  //  cvNamedWindow("view");
-  //  cvStartWindowThread();
-  //
-  //
-  //  ros::spin();
-  //  cvDestroyWindow("view");
 }
+
+
+
+
+//  ros::init(argc, argv, "led_finder");
+//
+//  nh = new ros::NodeHandle();
+//
+//  image_transport::ImageTransport it(*nh);
+//
+////  message_filters::Subscriber<sensor_msgs::Image> sub_rgb_img(*nh,"/camera/rgb/image_color", 5);
+//  image_transport::Subscriber sub = it.subscribe("/camera/ir/image_rect", 1, imageCb);
+//
+//  cvNamedWindow("view");
+//  cvStartWindowThread();
+//
+//
+//  ros::spin();
+//  cvDestroyWindow("view");

@@ -10,53 +10,61 @@
 
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <pcl_ros/transforms.h>
+#include <pcl/ros/conversions.h>
 
 
-#include <g2o/types/slam3d/vertex_se3_quat.h>
-#include <g2o/types/slam3d/camera_parameters.h>
+
 #include <g2o/types/slam3d/vertex_trackxyz.h>
-#include <g2o/types/slam3d/edge_project_disparity.h>
-#include <g2o/types/slam3d/edge_se3_quat.h>
-
-#include <g2o/core/graph_optimizer_sparse.h>
-#include <g2o/solvers/csparse/linear_solver_csparse.h>
-#include <g2o/solvers/pcg/linear_solver_pcg.h>
-#include "g2o/solvers/cholmod/linear_solver_cholmod.h"
-#include <g2o/core/block_solver.h>
-#include <g2o/core/linear_solver.h>
-
-
+#include <g2o/types/slam3d/edge_trackxyz_trackxyz.h>
+#include <g2o/types/slam3d/edge_project.h>
+#include <cmath>
 typedef pcl::PointXYZRGB point_type;
 typedef pcl::PointCloud<pcl::PointXYZRGB> point_cloud;
 
 
 struct Mocap_object {
 
-  std::vector<Eigen::Vector4f> vertices;
+  point_cloud cloud;
+  vector<g2o::VertexTrackXYZ*> vertices;
+
 
   void addVertex(float x, float y, float z){
-    Eigen::Vector4f v(x,y,z,1);
-    vertices.push_back(v);
+    point_type p;
+    p.x = x; p.y=y; p.z=z;
+    cloud.points.push_back(p);
   }
 
 
 
   void printObject(){
 
-    for (uint i=0; i<vertices.size(); ++i){
-      Eigen::Vector4f c = vertices[i];
-       printf("v %i: %f %f %f \n", i, c.x(),c.y(), c.z());
+    for (uint i=0; i<cloud.points.size(); ++i){
+      point_type c = cloud.points[i];
+      printf("v %i: %f %f %f \n", i, c.x,c.y, c.z);
     }
 
-//    for (uint i=0; i<vertices.size()-1; ++i){
-//      Eigen::Vector4f v = vertices[i];
-//      for (uint j=i+1; j<vertices.size(); ++j){
-//        Eigen::Vector4f c = vertices[j]-v;
-//        printf("rel (%i,%i): %f %f %f\n", i,j, c.x(),c.y(), c.z());
-//      }
-//    }
+    for (uint i=0; i<cloud.points.size()-1; ++i){
+      point_type v = cloud.points[i];
+      for (uint j=i+1; j<cloud.points.size(); ++j){
+        point_type c = cloud.points[j];
+        printf("rel (%i,%i): %f %f %f\n", i,j, c.x-v.x,c.y-v.y,c.z-v.y);
+      }
+    }
 
   }
+
+
+  void getPoseFromVertices();
+
+  // compares all pairwise distances. objects are considered the same if no
+  // dist is larger than max_dist
+  // assumes that object is defined by its distances
+  bool isSameObject(Mocap_object& other, float dist_thres, float* max_dist = NULL);
+
+
 
 
 };
