@@ -20,16 +20,46 @@ void Simulator::createTriangle(Mocap_object* mo){
 
   mo->cloud.points.clear();
   mo->addVertex(0,0,0);
-  mo->addVertex(1,0,0);
-  mo->addVertex(0,1,0);
-
+  mo->addVertex(3,0,0);
+  mo->addVertex(0,-1,0);
+  mo->addVertex(3,2,2);
 }
 
 
+
 void Simulator::trafoObject(Mocap_object* mo, float dx, float dy, float dz,float phi, float theta, float psi){
+
+
+  uint N = mo->cloud.points.size();
+
+  assert(N>0);
+
+  Eigen::Vector3f mean(0,0,0);
+  // find mean of object:
+  for (uint i=0; i<N; ++i){
+    point_type p=mo->cloud.points[i];
+    mean(0) += p.x; mean(1) += p.y; mean(2) += p.z;
+  }
+
+  mean /= N;
+
+  // demean pointcloud:
+  for (uint i=0; i<N; ++i){
+    point_type p=mo->cloud.points[i];
+    p.x -= mean(0);  p.y -= mean(1); p.z -= mean(2);
+    mo->cloud.points[i] = p;
+  }
+
+  // transform pointcloud (rotate, add translation and mean
   tf::Quaternion quat = tf::createQuaternionFromRPY(phi, theta, psi);
+
+//  printf("quat: %f %f %f %f\n", quat.x(),quat.y(),quat.z(), quat.w());
+
   Eigen::Quaternionf eig_quad(quat.x(),quat.y(),quat.z(), quat.w());
-  pcl::transformPointCloud(mo->cloud, mo->cloud, Eigen::Vector3f(dx,dy,dz), eig_quad);
+
+//  cout << "foo" << eig_quad << endl;
+
+  pcl::transformPointCloud(mo->cloud, mo->cloud, Eigen::Vector3f(dx+mean(0),dy+mean(1),dz+mean(2)), eig_quad);
 }
 
 
