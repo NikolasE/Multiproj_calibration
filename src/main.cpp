@@ -20,11 +20,15 @@
 #include "simulation.h"
 #include "optimization.h"
 #include "visualization.h"
-using namespace sensor_msgs;
+#include "evaluation.h"
+
+
 #include <time.h>
+#include <fstream>
 
-//ros::NodeHandle* nh;
 
+
+using namespace sensor_msgs;
 
 void mouseHandler(int event, int x, int y, int flags, void* param){
 
@@ -90,12 +94,22 @@ void imageCb(const sensor_msgs::ImageConstPtr& msg)
 
 int  main (int argc, char** argv)
 {
+
+
+
+//  ros::Time::init();
+//  checkStartingPose();
+//  return -1;
+
+
   ros::init(argc, argv, "g2o_mocap");
   ros::NodeHandle n;
   ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 10);
 
 
-//  assert(argc>1);
+
+
+  //  assert(argc>1);
 
   Simulator sim;
   Optimizer optimizer;
@@ -121,8 +135,8 @@ int  main (int argc, char** argv)
     vector<int> iter_cnt;
     for (int i=0; i<=20; ++i) iter_cnt.push_back(i);
     for (int i=25; i<100; i+=10) iter_cnt.push_back(i);
-    for (int i=100; i<=1000; i+=100) iter_cnt.push_back(i);
-    iter_cnt.push_back(10000);
+    for (int i=100; i<=700; i+=100) iter_cnt.push_back(i);
+//    iter_cnt.push_back(10000);
 
 
 
@@ -135,34 +149,43 @@ int  main (int argc, char** argv)
     float dz = D*(rand()*1.0/RAND_MAX-0.5);
 
     // 90deg in each direction
-    float D_rad = 0.3*M_PI;
+    float D_rad = M_PI;
     float d_roll  = D_rad*(rand()*1.0/RAND_MAX-0.5);
     float d_pitch = D_rad*(rand()*1.0/RAND_MAX-0.5);
     float d_yaw   = D_rad*(rand()*1.0/RAND_MAX-0.5);
 
-//    dx = dy = dz = 0;
-//    d_roll = d_pitch = d_yaw = 0;
+    //    dx = dy = dz = 0;
+    //    d_roll = d_pitch = d_yaw = 0;
 
 
     printf("Start pose: t: %.2f %.2f %.2f \nr: %.2f %.2f %.2f \n ", dx,dy,dz,d_roll/M_PI*180, d_pitch/M_PI*180, d_yaw/M_PI*180);
+
+    ofstream off;
+    off.open("/home/engelhar/ros/mocap/error.txt");
+
 
     for(uint i=0; i<iter_cnt.size(); ++i)
     {
 
       printf("OPTIMIZING WITH %i ITERATIONS \n",iter_cnt[i]);
 
-      sim.createTriangle(&mo);
-      sim.createTriangle(&mo_opt);
+      sim.createRect(&mo, 5, 3, 2);
+      sim.createRect(&mo_opt, 5, 3, 2);
 
-      sim.trafoObject(&mo    ,0,0,5,0,0,0);
-      sim.trafoObject(&mo_opt,dx,dy,5+dz,d_roll,d_pitch,d_yaw);
+//      sim.createTriangle(&mo);
+//      sim.createTriangle(&mo_opt);
+
+      // constant starting pose
+      sim.trafoObject(&mo_opt,0,0,15,0,0,0);
+      // random goal pose
+      sim.trafoObject(&mo,dx,dy,5+dz,d_roll,d_pitch,d_yaw);
 
 
       std::vector<CvPoint2D32f> prj = sim.computeProjections(&mo, false);
 
       // initial position for estimation
-//      sim.trafoObject(&mo_opt,dx,dy,dz,d_roll,d_pitch, d_yaw);
-//      sim.trafoObject(&mo_opt,0,0,0,0,0,0);
+      //      sim.trafoObject(&mo_opt,dx,dy,dz,d_roll,d_pitch, d_yaw);
+      //      sim.trafoObject(&mo_opt,0,0,0,0,0,0);
 
       optimizer.setCamParams(sim.c_x,sim.c_y,sim.f_x, sim.f_y);
       optimizer.setOberservations(prj);
@@ -175,7 +198,7 @@ int  main (int argc, char** argv)
 
       optimizer.optimize(iter_cnt[i]);
 
-//      optimizer.optimize(atoi(argv[1]));
+      //      optimizer.optimize(atoi(argv[1]));
       ros::Time end = ros::Time::now();
 
       printf("opt took %i ms\n", int((end-begin).toNSec()/1000/1000));
@@ -193,11 +216,11 @@ int  main (int argc, char** argv)
       double max_dist = mo.max_point_dist(mo_opt);
 
       ROS_WARN("%i iter, %.2f max_error",iter_cnt[i], max_dist);
-
+      off << iter_cnt[i] << " " << max_dist << endl;
 
       sendMarker(marker_pub, optimizer, &mo);
 
-      ros::Duration(0.1).sleep();
+      ros::Duration(0.05).sleep();
 
     }
 
@@ -208,12 +231,13 @@ int  main (int argc, char** argv)
     //      mo.isSameObject(mo_opt,0.1, &max_d);
     //      printf("max_dist: %f\n",max_d);
 
+    off.close();
   }
 
 
   // TODO: ugly
-//  while (ros::ok())
-//    sendMarker(marker_pub, optimizer, &mo);
+  //  while (ros::ok())
+  //    sendMarker(marker_pub, optimizer, &mo);
 
 
 

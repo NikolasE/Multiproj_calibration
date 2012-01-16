@@ -33,5 +33,5 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 link_directories(/home/engelhar/ros/external/projects-g2o/lib )
 include_directories( include /usr/include/suitesparse /home/engelhar/ros/external/projects-g2o  /home/engelhar/ros/external/projects-g2o/build )
 
-rosbuild_add_executable(led_tracker src/main.cpp src/simulation.cpp src/optimization.cpp src/mocap_defs.cpp src/visualization.cpp)
+rosbuild_add_executable(led_tracker src/main.cpp src/simulation.cpp src/optimization.cpp src/mocap_defs.cpp src/visualization.cpp src/evaluation.cpp)
 target_link_libraries(led_tracker   g2o_core g2o_types_slam3d g2o_solver_csparse cxsparse)

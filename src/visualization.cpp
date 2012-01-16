@@ -45,7 +45,7 @@ int sendProjectionRays(ros::Publisher& marker_pub, Optimizer& optimizer, int id,
     rays.points.push_back(p);
 
     float n = sqrt(a*a+b*b+1);
-    float l = 10; // length of projection ray
+    float l = 20; // length of projection ray
     p.x = a/n*l; p.y = b/n*l; p.z = 1/n*l;
     rays.points.push_back(p);
   }
