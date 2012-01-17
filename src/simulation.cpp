@@ -39,17 +39,22 @@ void Simulator::createTriangle(Mocap_object* mo){
 }
 
 
-void Simulator::perturbProjections( std::vector<CvPoint2D32f>& obs, double sigma){
+void Simulator::perturbProjections(Observations& obs, double sigma){
 
-  for (uint i=0; i<obs.size(); i++){
+  for (Observations::iterator it = obs.begin(); it != obs.end(); ++it){
 
     double dx = Simulator::getGaussianSample(0,sigma);
     double dy = Simulator::getGaussianSample(0,sigma);
 
     ROS_WARN("observation moved by %f %f", dx,dy);
 
-    obs[i].x += dx; // zero centered normal
-    obs[i].y += dy;
+    CvPoint2D32f p = it->second;
+
+    p.x += dx; // zero centered normal
+    p.y += dy;
+
+    obs[it->first] = p;
+
   }
 
 }
@@ -91,14 +96,17 @@ void Simulator::trafoObject(Mocap_object* mo, float dx, float dy, float dz,float
 }
 
 
-std::vector<CvPoint2D32f> Simulator::computeProjections(Mocap_object* mo, bool show_image){
+Observations Simulator::computeProjections(Mocap_object* mo, bool show_image){
 
   if (show_image)
     cvNamedWindow("Projection",1);
 
-  std::vector<CvPoint2D32f> prj;
+  Observations prj;
 
-  for (uint i=0; i<mo->cloud.points.size(); ++i){
+
+  // HACK!!!! -1: no observation of last vertex!@!!
+
+  for (uint i=0; i<mo->cloud.points.size()-1; ++i){
     point_type  c = mo->cloud.points[i];
     float x_px = c.x/c.z*f_x+c_x;
     float y_px = c.y/c.z*f_y+c_y;
@@ -108,7 +116,7 @@ std::vector<CvPoint2D32f> Simulator::computeProjections(Mocap_object* mo, bool s
 
 //    printf("%i: %f %f \n",i, x_px, y_px);
 
-    prj.push_back(cvPoint2D32f(x_px,y_px));
+    prj[i] = cvPoint2D32f(x_px,y_px);
 
     //    if (x_px < 0 || y_px < 0 || x_px >= c_width || y_px >= c_height)
     //      printf("not within image! \n ");

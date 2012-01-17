@@ -39,9 +39,9 @@ public:
   // create rectangle in x-y-Plane centered around (x_c,y_c,z) with given width and height
   void createRect(Mocap_object* mo,float z, float w, float h, float x_c=0, float y_c =0);
   void createTriangle(Mocap_object* mo);
-  std::vector<CvPoint2D32f> computeProjections(Mocap_object* mo, bool show_image = false);
+  Observations computeProjections(Mocap_object* mo, bool show_image = false);
 
-  static void perturbProjections( std::vector<CvPoint2D32f>& obs, double sigma);
+  static void perturbProjections( Observations& obs, double sigma);
 
   static double getGaussianSample(double mu, double sigma);
 

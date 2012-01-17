@@ -28,6 +28,8 @@
 typedef pcl::PointXYZRGB point_type;
 typedef pcl::PointCloud<pcl::PointXYZRGB> point_cloud;
 
+typedef map<int, CvPoint2D32f> Observations;
+
 
 struct Mocap_object {
 

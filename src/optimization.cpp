@@ -132,8 +132,10 @@ void Optimizer::addProjectionEdgesToGraph(){
 
 
 
-  assert(m_obj->cloud.points.size() == obs.size());
-  assert(m_obj->vertices.size() == obs.size());
+  // one vertex for each marker, but not every marker has an observation
+  assert(m_obj->cloud.points.size() == m_obj->vertices.size());
+  assert(m_obj->cloud.points.size() >= obs.size());
+
 
   // add camera
   g2o::VertexSE3* cam = new g2o::VertexSE3();
@@ -144,13 +146,17 @@ void Optimizer::addProjectionEdgesToGraph(){
 
 
   // add projections
-  for (uint i=0; i<obs.size(); ++i){
+  for (Observations::iterator it = obs.begin(); it != obs.end(); ++it){
+
+    int vertex_id = it->first;
+    CvPoint2D32f px = it->second;
+
     g2o::EdgeProject *obsEdge = new g2o::EdgeProject();
     obsEdge->vertices()[0] = cam;
-    obsEdge->vertices()[1] = m_obj->vertices[i];
+    obsEdge->vertices()[1] = m_obj->vertices[vertex_id];
     obsEdge->information()=Eigen::Matrix<double, 3, 3>::Identity();
     obsEdge->setCacheId(0,0);
-    Eigen::Vector2d m; m(0) = obs[i].x;  m(1) = obs[i].y;
+    Eigen::Vector2d m; m(0) = px.x;  m(1) = px.y;
     obsEdge->setMeasurement(m);
     //    projectionEdge->setRobustKernel(true);
     optimizer->addEdge(obsEdge);

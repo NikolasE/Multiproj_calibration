@@ -137,7 +137,7 @@ int  main (int argc, char** argv)
     vector<int> iter_cnt;
     for (int i=0; i<=20; ++i) iter_cnt.push_back(i);
     for (int i=25; i<100; i+=10) iter_cnt.push_back(i);
-    for (int i=100; i<=700; i+=100) iter_cnt.push_back(i);
+    for (int i=100; i<=1000; i+=100) iter_cnt.push_back(i);
     //    iter_cnt.push_back(10000);
 
 
@@ -167,9 +167,9 @@ int  main (int argc, char** argv)
 
 
     // same pertubation for all iterations
-    double sigma = 3;
-    double err_dx = Simulator::getGaussianSample(0,sigma); // zero centered normal
-    double err_dy = Simulator::getGaussianSample(0,sigma);
+//    double sigma = 3;
+//    double err_dx = Simulator::getGaussianSample(0,sigma); // zero centered normal
+//    double err_dy = Simulator::getGaussianSample(0,sigma);
 
     ROS_WARN("observation moved by %f %f", dx,dy);
 
@@ -191,7 +191,7 @@ int  main (int argc, char** argv)
       sim.trafoObject(&mo,dx,dy,5+dz,d_roll,d_pitch,d_yaw);
 
 
-      std::vector<CvPoint2D32f> prj = sim.computeProjections(&mo, false);
+      Observations obs = sim.computeProjections(&mo, false);
 
 
 //      if (true){
@@ -206,7 +206,7 @@ int  main (int argc, char** argv)
 //      }
 
       optimizer.setCamParams(sim.c_x,sim.c_y,sim.f_x, sim.f_y);
-      optimizer.setOberservations(prj);
+      optimizer.setOberservations(obs);
       optimizer.setObject(&mo_opt);
       optimizer.InitOptimization();
 
@@ -238,7 +238,7 @@ int  main (int argc, char** argv)
 
       sendMarker(marker_pub, optimizer, &mo);
 
-      ros::Duration(0.05).sleep();
+      ros::Duration(0.02).sleep();
 
     }
 

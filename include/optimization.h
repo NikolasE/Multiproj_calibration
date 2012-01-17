@@ -30,7 +30,7 @@ class Optimizer {
 
 public:
   Mocap_object* m_obj;
-  std::vector<CvPoint2D32f> obs;
+  Observations obs;
   g2o::SparseOptimizer* optimizer;
   float cx, cy, fx, fy;
 
@@ -38,7 +38,7 @@ public:
     cx=cx_; cy=cy_; fx=fx_; fy=fy_; }
 
   void setObject(Mocap_object* mo){m_obj = mo; m_obj->vertices.clear();}
-  void setOberservations(std::vector<CvPoint2D32f> obs_){obs = obs_;}
+  void setOberservations(Observations obs_){obs = obs_;}
 
   void testVertex2Edge();
 
@@ -54,7 +54,6 @@ private:
   void initOptimizer();
   void addMocapObjectToGraph();
   void addProjectionEdgesToGraph();
-//  std::vector<g2o::VertexTrackXYZ*> vertices;
 
 
 
