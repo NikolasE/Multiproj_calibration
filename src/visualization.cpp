@@ -30,7 +30,7 @@ int sendProjectionRays(ros::Publisher& marker_pub, Optimizer& optimizer, int id,
 
 
 
-  rays.scale.x = 0.02;
+  rays.scale.x = 0.05;
   rays.color.a = 1;
   rays.color.r = r; rays.color.g = g; rays.color.b = b;
 

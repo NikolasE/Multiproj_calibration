@@ -8,6 +8,19 @@
 
 #include "simulation.h"
 
+double Simulator::getGaussianSample(double mu, double sigma){
+  double v=0;
+  for (int i=0; i<12; ++i)
+    v+= rand()*1.0/RAND_MAX;
+
+  v/=6;
+
+  return v*sigma+mu;
+
+
+}
+
+
 void Simulator::createRect(Mocap_object* mo, float z, float w, float h, float x_c, float y_c){
   mo->cloud.points.clear();
   mo->addVertex(x_c-w/2,y_c-h/2,z);
@@ -25,6 +38,21 @@ void Simulator::createTriangle(Mocap_object* mo){
   mo->addVertex(3,2,2);
 }
 
+
+void Simulator::perturbProjections( std::vector<CvPoint2D32f>& obs, double sigma){
+
+  for (uint i=0; i<obs.size(); i++){
+
+    double dx = Simulator::getGaussianSample(0,sigma);
+    double dy = Simulator::getGaussianSample(0,sigma);
+
+    ROS_WARN("observation moved by %f %f", dx,dy);
+
+    obs[i].x += dx; // zero centered normal
+    obs[i].y += dy;
+  }
+
+}
 
 
 void Simulator::trafoObject(Mocap_object* mo, float dx, float dy, float dz,float phi, float theta, float psi){

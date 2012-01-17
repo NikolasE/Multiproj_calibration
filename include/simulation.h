@@ -41,6 +41,10 @@ public:
   void createTriangle(Mocap_object* mo);
   std::vector<CvPoint2D32f> computeProjections(Mocap_object* mo, bool show_image = false);
 
+  static void perturbProjections( std::vector<CvPoint2D32f>& obs, double sigma);
+
+  static double getGaussianSample(double mu, double sigma);
+
 };
 
 

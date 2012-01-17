@@ -21,7 +21,7 @@
 #include "optimization.h"
 #include "visualization.h"
 #include "evaluation.h"
-
+#include <algorithm>
 
 #include <time.h>
 #include <fstream>
@@ -97,9 +97,11 @@ int  main (int argc, char** argv)
 
 
 
-//  ros::Time::init();
-//  checkStartingPose();
-//  return -1;
+  //  ros::Time::init();
+  //
+  //
+  //  //  checkStartingPose();
+  //  return -1;
 
 
   ros::init(argc, argv, "g2o_mocap");
@@ -136,7 +138,7 @@ int  main (int argc, char** argv)
     for (int i=0; i<=20; ++i) iter_cnt.push_back(i);
     for (int i=25; i<100; i+=10) iter_cnt.push_back(i);
     for (int i=100; i<=700; i+=100) iter_cnt.push_back(i);
-//    iter_cnt.push_back(10000);
+    //    iter_cnt.push_back(10000);
 
 
 
@@ -164,6 +166,14 @@ int  main (int argc, char** argv)
     off.open("/home/engelhar/ros/mocap/error.txt");
 
 
+    // same pertubation for all iterations
+    double sigma = 3;
+    double err_dx = Simulator::getGaussianSample(0,sigma); // zero centered normal
+    double err_dy = Simulator::getGaussianSample(0,sigma);
+
+    ROS_WARN("observation moved by %f %f", dx,dy);
+
+
     for(uint i=0; i<iter_cnt.size(); ++i)
     {
 
@@ -172,8 +182,8 @@ int  main (int argc, char** argv)
       sim.createRect(&mo, 5, 3, 2);
       sim.createRect(&mo_opt, 5, 3, 2);
 
-//      sim.createTriangle(&mo);
-//      sim.createTriangle(&mo_opt);
+      //      sim.createTriangle(&mo);
+      //      sim.createTriangle(&mo_opt);
 
       // constant starting pose
       sim.trafoObject(&mo_opt,0,0,15,0,0,0);
@@ -183,9 +193,17 @@ int  main (int argc, char** argv)
 
       std::vector<CvPoint2D32f> prj = sim.computeProjections(&mo, false);
 
-      // initial position for estimation
-      //      sim.trafoObject(&mo_opt,dx,dy,dz,d_roll,d_pitch, d_yaw);
-      //      sim.trafoObject(&mo_opt,0,0,0,0,0,0);
+
+//      if (true){
+//        // new error for each iteration (show amount of error better)
+//        Simulator::perturbProjections(prj, sigma);
+//      }else{
+//        // introduce same error: correct
+//        for (uint i=0; i<prj.size(); i++){
+//          prj[i].x += err_dx;
+//          prj[i].y += err_dy;
+//        }
+//      }
 
       optimizer.setCamParams(sim.c_x,sim.c_y,sim.f_x, sim.f_y);
       optimizer.setOberservations(prj);
