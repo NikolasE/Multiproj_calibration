@@ -22,8 +22,8 @@ bool isSimilar(Eigen::Affine3f& a, Eigen::Affine3f& b, float max_d, float max_ra
 //  printf("%f %f %f %f %f %f \n", t[0], t[1], t[2], t[3], t[4], t[5]);
 
   bool close = true;
-  for (int k=0; k<3;k++) if (t[k]>max_d) close = false;
-  for (int k=3; k<6;k++) if (t[k]>max_rad) close = false;
+  for (int k=0; k<3;k++) if (fabs(t[k])>max_d) close = false;
+  for (int k=3; k<6;k++) if (fabs(t[k])>max_rad) close = false;
 
   if (error !=NULL){
     *error = 0;
