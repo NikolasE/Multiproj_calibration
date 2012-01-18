@@ -29,6 +29,14 @@ void Simulator::createRect(Mocap_object* mo, float z, float w, float h, float x_
   mo->addVertex(x_c+w/2,y_c-h/2,z);
 }
 
+
+void Simulator::createRandomPose(float sig_trans, float sig_rot, float* mean, float* trafo){
+
+  for (int i=0; i<3; ++i) trafo[i]= mean[i] + sig_trans*(rand()*1.0/RAND_MAX-0.5);
+  for (int i=3; i<6; ++i) trafo[i]= mean[i] + sig_rot*(rand()*1.0/RAND_MAX-0.5);
+
+}
+
 void Simulator::createTriangle(Mocap_object* mo){
 
   mo->cloud.points.clear();
@@ -59,7 +67,10 @@ void Simulator::perturbProjections(Observations& obs, double sigma){
 
 }
 
+void Simulator::trafoObject(Mocap_object* mo, float* trafo){
+  trafoObject(mo, trafo[0], trafo[1], trafo[2], trafo[3], trafo[4], trafo[5]);
 
+}
 void Simulator::trafoObject(Mocap_object* mo, float dx, float dy, float dz,float phi, float theta, float psi){
 
 
@@ -103,10 +114,7 @@ Observations Simulator::computeProjections(Mocap_object* mo, bool show_image){
 
   Observations prj;
 
-
-  // HACK!!!! -1: no observation of last vertex!@!!
-
-  for (uint i=0; i<mo->cloud.points.size()-1; ++i){
+  for (uint i=0; i<mo->cloud.points.size(); ++i){
     point_type  c = mo->cloud.points[i];
     float x_px = c.x/c.z*f_x+c_x;
     float y_px = c.y/c.z*f_y+c_y;

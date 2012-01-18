@@ -36,14 +36,18 @@ public:
   }
 
   void trafoObject(Mocap_object* mo, float dx, float dy, float dz,float phi, float theta, float psi);
+  void trafoObject(Mocap_object* mo, float* trafo);
+
   // create rectangle in x-y-Plane centered around (x_c,y_c,z) with given width and height
   void createRect(Mocap_object* mo,float z, float w, float h, float x_c=0, float y_c =0);
   void createTriangle(Mocap_object* mo);
   Observations computeProjections(Mocap_object* mo, bool show_image = false);
 
   static void perturbProjections( Observations& obs, double sigma);
-
   static double getGaussianSample(double mu, double sigma);
+
+  // sample pose around t [x,y,z,roll,pitch,yaw] with gaussian (zero-centered) noise
+  static void createRandomPose(float sig_trans, float sig_rot, float* mean, float* trafo);
 
 };
 

@@ -31,6 +31,9 @@ typedef pcl::PointCloud<pcl::PointXYZRGB> point_cloud;
 typedef map<int, CvPoint2D32f> Observations;
 
 
+void affine3fToXyzRpy(Eigen::Affine3f t, float* trafo);
+void xyzRpyToAffine3f(float* trafo, Eigen::Affine3f& t);
+
 struct Mocap_object {
 
   point_cloud cloud;

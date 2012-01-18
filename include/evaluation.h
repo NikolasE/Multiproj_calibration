@@ -20,7 +20,7 @@
 
 
 void checkStartingPose();
-
+bool isSimilar(Eigen::Affine3f& a, Eigen::Affine3f& b, float max_d, float max_rad, float* error = NULL);
 
 
 

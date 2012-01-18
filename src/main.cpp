@@ -20,7 +20,10 @@
 #include "simulation.h"
 #include "optimization.h"
 #include "visualization.h"
+#include "cluster.h"
 #include "evaluation.h"
+
+
 #include <algorithm>
 
 #include <time.h>
@@ -96,7 +99,7 @@ int  main (int argc, char** argv)
 {
 
 
-
+  srand ( time(NULL) );
   //  ros::Time::init();
   //
   //
@@ -113,10 +116,6 @@ int  main (int argc, char** argv)
 
   //  assert(argc>1);
 
-  Simulator sim;
-  Optimizer optimizer;
-  Mocap_object mo;
-  Mocap_object mo_opt;
 
 
 
@@ -127,130 +126,207 @@ int  main (int argc, char** argv)
   //  mo.getPoseFromVertices();
 
 
-  //  float z = 10;
-  //    for (float z = 1; z<=30; z++)
-  {
-    //      printf("z: %f \n", z);
+  vector<int> iter_cnt;
+  //  for (int i=0; i<=20; i+=2) iter_cnt.push_back(i);
+  //  for (int i=25; i<100; i+=20) iter_cnt.push_back(i);
+  //  for (int i=100; i<=1000; i+=150) iter_cnt.push_back(i);
+  iter_cnt.push_back(1000);
 
 
-
-    vector<int> iter_cnt;
-    for (int i=0; i<=20; ++i) iter_cnt.push_back(i);
-    for (int i=25; i<100; i+=10) iter_cnt.push_back(i);
-    for (int i=100; i<=1000; i+=100) iter_cnt.push_back(i);
-    //    iter_cnt.push_back(10000);
+  // random goal pose
+  float goal_pose[6];
+  float init_pose[6]  = {0,0,10,0,0,0};
+  float start_pose[6] = {0,0, 5,0,0,0};
 
 
+  int goal_pose_cnt = 100;
+  int found_track_cnt = 0;
 
-    srand ( time(NULL) );
-
-    // 1.5m in all directions
-    float D = 3;
-    float dx = D*(rand()*1.0/RAND_MAX-0.5);
-    float dy = D*(rand()*1.0/RAND_MAX-0.5);
-    float dz = D*(rand()*1.0/RAND_MAX-0.5);
-
-    // 90deg in each direction
-    float D_rad = M_PI;
-    float d_roll  = D_rad*(rand()*1.0/RAND_MAX-0.5);
-    float d_pitch = D_rad*(rand()*1.0/RAND_MAX-0.5);
-    float d_yaw   = D_rad*(rand()*1.0/RAND_MAX-0.5);
-
-    //    dx = dy = dz = 0;
-    //    d_roll = d_pitch = d_yaw = 0;
+  for (int gpc = 0; gpc<goal_pose_cnt; gpc++){
 
 
-    printf("Start pose: t: %.2f %.2f %.2f \nr: %.2f %.2f %.2f \n ", dx,dy,dz,d_roll/M_PI*180, d_pitch/M_PI*180, d_yaw/M_PI*180);
-
-    ofstream off;
-    off.open("/home/engelhar/ros/mocap/error.txt");
-
-
-    // same pertubation for all iterations
-//    double sigma = 3;
-//    double err_dx = Simulator::getGaussianSample(0,sigma); // zero centered normal
-//    double err_dy = Simulator::getGaussianSample(0,sigma);
-
-    ROS_WARN("observation moved by %f %f", dx,dy);
+    Simulator sim;
+    Optimizer optimizer;
+    Mocap_object mo;
+    Mocap_object mo_opt;
+    ClusterManager cl_man;
 
 
-    for(uint i=0; i<iter_cnt.size(); ++i)
+    // goal pose is created once
+    Simulator::createRandomPose(3,M_PI, start_pose, goal_pose);
+    sim.createRect(&mo, 5, 3, 2);
+    sim.trafoObject(&mo,goal_pose);
+
+    for (int start_pose_cnt = 0; start_pose_cnt<20; start_pose_cnt++)
     {
 
-      printf("OPTIMIZING WITH %i ITERATIONS \n",iter_cnt[i]);
 
-      sim.createRect(&mo, 5, 3, 2);
-      sim.createRect(&mo_opt, 5, 3, 2);
-
-      //      sim.createTriangle(&mo);
-      //      sim.createTriangle(&mo_opt);
-
-      // constant starting pose
-      sim.trafoObject(&mo_opt,0,0,15,0,0,0);
-      // random goal pose
-      sim.trafoObject(&mo,dx,dy,5+dz,d_roll,d_pitch,d_yaw);
+      ROS_WARN("Init with start_pose %i", start_pose_cnt);
 
 
-      Observations obs = sim.computeProjections(&mo, false);
+      Simulator::createRandomPose(3,M_PI, init_pose, init_pose);
+
+//      ofstream off;
+//      off.open("/home/engelhar/ros/mocap/error.txt");
 
 
-//      if (true){
-//        // new error for each iteration (show amount of error better)
-//        Simulator::perturbProjections(prj, sigma);
-//      }else{
-//        // introduce same error: correct
-//        for (uint i=0; i<prj.size(); i++){
-//          prj[i].x += err_dx;
-//          prj[i].y += err_dy;
-//        }
-//      }
+      //    // same pertubation for all iterations
+      //    double sigma = 3;
+      //    double err_dx = Simulator::getGaussianSample(0,sigma); // zero centered normal
+      //    double err_dy = Simulator::getGaussianSample(0,sigma);
+      //
+      //    ROS_WARN("observation moved by %f %f", dx,dy);
 
-      optimizer.setCamParams(sim.c_x,sim.c_y,sim.f_x, sim.f_y);
-      optimizer.setOberservations(obs);
-      optimizer.setObject(&mo_opt);
-      optimizer.InitOptimization();
+      for(uint i=0; i<iter_cnt.size(); ++i)
+      {
+
+        // for each optimization, moved object is positioned at the same pose
+        sim.createRect(&mo_opt, 5, 3, 2);
+        sim.trafoObject(&mo_opt,init_pose);
 
 
+        printf("OPTIMIZING WITH %i ITERATIONS \n",iter_cnt[i]);
 
-      ros::Time begin = ros::Time::now();
+        // z = 5, w = 3, h = 2
 
-      optimizer.optimize(iter_cnt[i]);
 
-      //      optimizer.optimize(atoi(argv[1]));
-      ros::Time end = ros::Time::now();
+        //      sim.createTriangle(&mo);
+        //      sim.createTriangle(&mo_opt);
 
-      printf("opt took %i ms\n", int((end-begin).toNSec()/1000/1000));
 
-      mo_opt.getPoseFromVertices();
-      sendMarker(marker_pub, optimizer);
+        // try different starting poses for optimization
+        //      if (start_pose == 0)
+        //        sim.trafoObject(&mo_opt,0,0,10,0,0,0);
+        //      if (start_pose == 1)
+        //        sim.trafoObject(&mo_opt,0,0,10,M_PI,0,0);
+        //      if (start_pose == 2)
+        //        sim.trafoObject(&mo_opt,0,0,10,0,M_PI,0);
+        //      if (start_pose == 3)
+        //        sim.trafoObject(&mo_opt,0,0,10,0,0,M_PI);
 
-      Eigen::Affine3f t;
-      float tr[6];
-      mo.getTrafoTo(mo_opt,t, tr);
 
-      printf("t: %.2f %.2f %.2f \nr: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
 
-      // get max distance between corresponding points:
-      double max_dist = mo.max_point_dist(mo_opt);
 
-      ROS_WARN("%i iter, %.2f max_error",iter_cnt[i], max_dist);
-      off << iter_cnt[i] << " " << max_dist << endl;
 
-      sendMarker(marker_pub, optimizer, &mo);
+        Observations obs = sim.computeProjections(&mo, false);
 
-      ros::Duration(0.02).sleep();
+        //
+        //      if (false){
+        //        // new error for each iteration (show amount of error better)
+        //        Simulator::perturbProjections(prj, sigma);
+        //      }else{
+        //        // introduce same error: correct
+        //        for (uint i=0; i<prj.size(); i++){
+        //          prj[i].x += err_dx;
+        //          prj[i].y += err_dy;
+        //        }
+        //      }
+
+        optimizer.setCamParams(sim.c_x,sim.c_y,sim.f_x, sim.f_y);
+        optimizer.setOberservations(obs);
+        optimizer.setObject(&mo_opt);
+        optimizer.InitOptimization();
+
+
+
+        ros::Time begin = ros::Time::now();
+
+        optimizer.optimize(iter_cnt[i]);
+
+        //      optimizer.optimize(atoi(argv[1]));
+        ros::Time end = ros::Time::now();
+
+        printf("opt took %i ms\n", int((end-begin).toNSec()/1000/1000));
+
+        mo_opt.getPoseFromVertices();
+//        sendMarker(marker_pub, optimizer);
+
+        Eigen::Affine3f t;
+        float tr[6];
+        mo.getTrafoTo(mo_opt,t, tr);
+
+
+        cl_man.addTrafo(t);
+
+        printf("t: %.2f %.2f %.2f \nr: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
+
+        // get max distance between corresponding points:
+        double max_dist = mo.max_point_dist(mo_opt);
+
+        ROS_WARN("%i iter, %.2f max_error",iter_cnt[i], max_dist);
+       // off << iter_cnt[i] << " " << max_dist << endl;
+
+
+        ros::Duration(0.1).sleep();
+
+      }
+
+
+      //      mo_opt.getPoseFromVertices();
+      //
+      //      float max_d;
+      //      mo.isSameObject(mo_opt,0.1, &max_d);
+      //      printf("max_dist: %f\n",max_d);
+
+      // off.close();
+    }
+
+
+    // check for cluster:
+    int cl = cl_man.findClusters(0.1,10);
+    ROS_WARN("found %i cluster", cl);
+
+
+
+    // compare goal_pose with medians:
+    bool good_track = false;
+    for (int i=0; i<cl; ++i){
+
+      float error;
+      Eigen::Affine3f med = cl_man.getMed(i);
+
+      float g[6] = {0,0,0,0,0,0}; // poses are from optimal pose to converged pose (best case: 0,0,0,0,0,0)
+      Eigen::Affine3f g_; xyzRpyToAffine3f(g,g_);
+      bool similar = isSimilar(med,g_,0.1, 10/M_PI*180, &error);
+
+      if (similar){
+        ROS_INFO("HIT: dist to med %i: %f", i,error);
+        good_track = true;
+      }
+      else
+        ROS_INFO("FAIL: dist to med %i: %f", i,error);
 
     }
 
 
-    //      mo_opt.getPoseFromVertices();
-    //
-    //      float max_d;
-    //      mo.isSameObject(mo_opt,0.1, &max_d);
-    //      printf("max_dist: %f\n",max_d);
+    if (good_track){
+      ROS_ERROR("found valid track");
+      found_track_cnt++;
+    }
+    else
+      ROS_ERROR("Found NO valid track");
 
-    off.close();
-  }
+    //  for (uint i=0; i<cl_man.clusters.size(); ++i){
+    //    for (uint j=0; j<cl_man.clusters[i].size(); ++j){
+    //      float t[6];
+    //      affine3fToXyzRpy(cl_man.trafos[cl_man.clusters[i][j]],t);
+    //      printf("Pose: %i:  %f %f %f %f %f %f \n",i, t[0], t[1], t[2], t[3], t[4], t[5]);
+    //    }
+    //  }
+
+    for (uint i=0; i<cl_man.medians.size(); ++i){
+      float t[6];
+      affine3fToXyzRpy(cl_man.getMed(i),t);
+      printf("Med: %i:  %f %f %f %f %f %f \n",i, t[0], t[1], t[2], t[3], t[4], t[5]);
+    }
+
+
+  } // loop over many start poses
+
+
+  ROS_ERROR("found valid track for %i of %i trials", found_track_cnt, goal_pose_cnt);
+
+  //  printf("Goal:   %f %f %f %f %f %f \n", goal_pose[0],goal_pose[1],goal_pose[2],goal_pose[3],goal_pose[4],goal_pose[5]);
 
 
   // TODO: ugly

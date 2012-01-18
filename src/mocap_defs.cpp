@@ -2,7 +2,7 @@
 
 #include "mocap_defs.h"
 #include <pcl/common/transformation_from_correspondences.h>
-
+#include <pcl/common/transform.h>
 
 void Mocap_object::getPoseFromVertices(){
   assert(vertices.size() == cloud.points.size());
@@ -36,9 +36,9 @@ bool Mocap_object::isSameObject(Mocap_object& other, float dist_thres, float* ma
 
       double diff = fabs(d1-d2);
 
-//      cout << "edge between " << v << " and " << c << endl;
-//      cout << "and edge between " << v_o << " and " << c_o << endl;
-//      printf("d1,d2: %f %f , abs: %f\n", d1, d2, diff);
+      //      cout << "edge between " << v << " and " << c << endl;
+      //      cout << "and edge between " << v_o << " and " << c_o << endl;
+      //      printf("d1,d2: %f %f , abs: %f\n", d1, d2, diff);
 
 
       if (max_dist != NULL && *max_dist<diff)
@@ -53,6 +53,14 @@ bool Mocap_object::isSameObject(Mocap_object& other, float dist_thres, float* ma
 
 }
 
+
+void affine3fToXyzRpy(Eigen::Affine3f t, float* trafo){
+  pcl::getTranslationAndEulerAngles(t, trafo[0],trafo[1],trafo[2],trafo[3],trafo[4],trafo[5]);
+}
+
+void xyzRpyToAffine3f(float* trafo, Eigen::Affine3f& t){
+  pcl::getTransformation(trafo[0],trafo[1],trafo[2],trafo[3],trafo[4],trafo[5],t);
+}
 
 bool Mocap_object::getTrafoTo(Mocap_object& other,Eigen::Affine3f& t, float* trafo){
 
@@ -74,15 +82,8 @@ bool Mocap_object::getTrafoTo(Mocap_object& other,Eigen::Affine3f& t, float* tra
 
   t = tfc.getTransformation();
 
-  if (trafo!=NULL){
-    // pcl::getTranslationAndEulerAngles
-    trafo[0] = t(0,3);
-    trafo[1] = t(1,3);
-    trafo[2] = t(2,3);
-    trafo[3] = atan2f(t(2,1), t(2,2));
-    trafo[4] = asinf(-t(2,0));
-    trafo[5] = atan2f(t(1,0), t(0,0));
-  }
+  if (trafo!=NULL) affine3fToXyzRpy(t,trafo);
+
 
   return true;
 
