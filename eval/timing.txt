@@ -1,0 +1,30 @@
+# Ausgabe von revision 806491c:
+
+# S G P T
+# 50 zufaellige zielposen, S zufaellige Initialisierungen, G iterationen g2o, P % der Laeufe haben einen Median generiert, der
+# nahe an der korrekten Position liegt, T ms fuer Optimierungen pro Zielpose
+5 100 4 10
+10 100 0 20
+20 100 0 40
+50 100 4 90
+100 100 6 182
+5 500 0 44
+10 500 0 90
+20 500 12 181
+50 500 0 450
+100 500 0 895
+5 1000 0 69
+10 1000 0 136
+20 1000 0 276
+50 1000 0 691
+100 1000 0 1402
+5 5000 100 244
+10 5000 98 490
+20 5000 100 1002
+50 5000 100 2586
+100 5000 100 5069
+5 10000 100 258
+10 10000 98 537
+20 10000 100 1020
+50 10000 100 2638
+100 10000 98 5177
