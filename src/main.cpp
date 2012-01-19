@@ -99,7 +99,7 @@ int  main (int argc, char** argv)
 {
 
 
-  srand ( 1 );
+  srand ( time(NULL) );
   //  ros::Time::init();
   //
   //
@@ -134,6 +134,7 @@ int  main (int argc, char** argv)
   float init_pose[6]  = {0,0,15,0,0,0};
   float start_pose[6] = {0,0,10,0,0,0};
 
+
   int start_pose_list[5] = {5,10,20,50,100};
   int g2o_iter_list[5]  = {100,500,1000,5000,10000};
 
@@ -141,6 +142,7 @@ int  main (int argc, char** argv)
   int goal_pose_cnt  = 50; // number of tested poses
   //  int start_pose_cnt = 20; // number of initial poses for each testes pose
   //  int g2o_iter_cnt  = 10000;
+
 
 
   ofstream of_time;
@@ -166,9 +168,9 @@ int  main (int argc, char** argv)
 
 
       vector<int> iter_cnt;
-      //  for (int i=0; i<=20; i+=2) iter_cnt.push_back(i);
-      //  for (int i=25; i<100; i+=20) iter_cnt.push_back(i);
-      //  for (int i=100; i<=1000; i+=150) iter_cnt.push_back(i);
+//      for (int i=0; i<=20; i+=2) iter_cnt.push_back(i);
+//      for (int i=25; i<100; i+=20) iter_cnt.push_back(i);
+//      for (int i=100; i<=1000; i+=150) iter_cnt.push_back(i);
       iter_cnt.push_back(g2o_iter_cnt);
 
 
@@ -185,12 +187,19 @@ int  main (int argc, char** argv)
         Mocap_object mo_opt;
         ClusterManager cl_man;
 
+        Mocap_object original;
+        sim.createRect(&original, 0, 3, 2);
 
         // goal pose is created once
-        Simulator::createRandomPose(3,M_PI, start_pose, goal_pose);
-        sim.createRect(&mo, 10, 3, 2);
+        Simulator::createRandomPose(3,2*M_PI, start_pose, goal_pose); // zero-centered
+        sim.createRect(&mo, 0, 3, 2);
         sim.trafoObject(&mo,goal_pose);
+//        ROS_WARN("goal_pose: %.2f %.2f %.2f r: %.2f %.2f %.2f ", goal_pose[0],goal_pose[1],goal_pose[2],goal_pose[3]/M_PI*180,goal_pose[4]/M_PI*180,goal_pose[5]/M_PI*180);
+
         Observations obs = sim.computeProjections(&mo, false);
+
+        // last_trafo
+        float tr[6];
 
         for (int spc = 0; spc<start_pose_cnt; spc++)
         {
@@ -199,7 +208,14 @@ int  main (int argc, char** argv)
           //      ROS_WARN("Init with start_pose %i", spc);
 
 
-          Simulator::createRandomPose(3,M_PI, init_pose, init_pose);
+          if (spc == 0){
+            Simulator::createRandomPose(3,M_PI, init_pose, init_pose);
+          }
+          else{
+//            ROS_WARN("last_poses: %.2f %.2f %.2f r: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
+            Simulator::createRandomPose(0,2*M_PI, tr, init_pose);
+//            ROS_WARN("new init: %.2f %.2f %.2f r: %.2f %.2f %.2f \n", init_pose[0],init_pose[1],init_pose[2],init_pose[3]/M_PI*180,init_pose[4]/M_PI*180,init_pose[5]/M_PI*180);
+          }
 
           //      ofstream off;
           //      off.open("/home/engelhar/ros/mocap/error.txt");
@@ -215,19 +231,17 @@ int  main (int argc, char** argv)
           for(uint i=0; i<iter_cnt.size(); ++i)
           {
 
+
+            ROS_INFO("iterations: %i",iter_cnt[i]);
+
             // for each optimization, moved object is positioned at the same pose
-            sim.createRect(&mo_opt, 10, 3, 2);
+            sim.createRect(&mo_opt, 0, 3, 2);
+//            ROS_WARN("starting with: %.2f %.2f %.2f r: %.2f %.2f %.2f \n", init_pose[0],init_pose[1],init_pose[2],init_pose[3]/M_PI*180,init_pose[4]/M_PI*180,init_pose[5]/M_PI*180);
+
             sim.trafoObject(&mo_opt,init_pose);
 
 
-            //        printf("OPTIMIZING WITH %i ITERATIONS \n",iter_cnt[i]);
 
-            // z = 5, w = 3, h = 2
-
-
-
-
-            //
             //      if (false){
             //        // new error for each iteration (show amount of error better)
             //        Simulator::perturbProjections(prj, sigma);
@@ -259,22 +273,26 @@ int  main (int argc, char** argv)
 
 
             Eigen::Affine3f t;
-            float tr[6];
-            mo.getTrafoTo(mo_opt,t, tr);
+
+//
+//            original.getTrafoTo(mo,t, tr);
+//            printf("goal  : %.2f %.2f %.2f r: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
+            original.getTrafoTo(mo_opt,t, tr);
+//            printf("result: %.2f %.2f %.2f r: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
 
 
             cl_man.addTrafo(t);
 
-            //        printf("t: %.2f %.2f %.2f \nr: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
+//            printf("t: %.2f %.2f %.2f \nr: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
 
-            // get max distance between corresponding points:
-            //        double max_dist = mo.max_point_dist(mo_opt);
-
-            //        ROS_WARN("%i iter, %.2f max_error",iter_cnt[i], max_dist);
+//            get max distance between corresponding points:
+//            double max_dist = mo.max_point_dist(mo_opt);
+//
+//            ROS_WARN("%i iter, %.2f max_error",iter_cnt[i], max_dist);
             // off << iter_cnt[i] << " " << max_dist << endl;
 
-            //        sendMarker(marker_pub, optimizer);
-            //        ros::Duration(0.1).sleep();
+            sendMarker(marker_pub, optimizer,&mo);
+//            ros::Duration(0.01).sleep();
 
           }
 
@@ -302,8 +320,8 @@ int  main (int argc, char** argv)
           float error;
           Eigen::Affine3f med = cl_man.getMed(i);
 
-          float g[6] = {0,0,0,0,0,0}; // poses are from optimal pose to converged pose (best case: 0,0,0,0,0,0)
-          Eigen::Affine3f g_; xyzRpyToAffine3f(g,g_);
+          Eigen::Affine3f g_;
+          xyzRpyToAffine3f(goal_pose,g_);
           bool similar = isSimilar(med,g_,0.1, 10/M_PI*180, &error);
 
           if (similar){
@@ -332,6 +350,7 @@ int  main (int argc, char** argv)
         //    }
         //  }
 
+        printf("goal:  %f %f %f %f %f %f \n", goal_pose[0], goal_pose[1], goal_pose[2], goal_pose[3], goal_pose[4], goal_pose[5]);
         for (uint i=0; i<cl_man.medians.size(); ++i){
           float t[6];
           affine3fToXyzRpy(cl_man.getMed(i),t);
@@ -351,6 +370,8 @@ int  main (int argc, char** argv)
 
     }
   }
+
+
 
 
   of_time.close();

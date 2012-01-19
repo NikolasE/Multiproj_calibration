@@ -71,7 +71,6 @@ bool Mocap_object::getTrafoTo(Mocap_object& other,Eigen::Affine3f& t, float* tra
 
   pcl::TransformationFromCorrespondences tfc;
 
-
   // get mean
   for (uint i=0; i<cloud.points.size(); ++i){
     point_type from = cloud.points[i];

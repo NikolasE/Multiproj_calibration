@@ -120,9 +120,9 @@ void sendMarker(ros::Publisher& marker_pub, Optimizer& optimizer, Mocap_object* 
   id = sendProjectionRays(marker_pub,optimizer, id, "ns_projections", 0,0,1); // blue
   id = sendObject(marker_pub,id, *optimizer.m_obj, "ns_moved_object", 1,0,0); // red
 
-  if (fixed!=NULL)
+  if (fixed!=NULL){
     id = sendObject(marker_pub,id, *fixed, "ns_static_object", 0,1,0); // green
-
+  }
 
 
 
