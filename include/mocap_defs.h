@@ -25,6 +25,8 @@
 #include <g2o/types/slam3d/edge_project.h>
 #include <cmath>
 
+using namespace std;
+
 typedef pcl::PointXYZRGB point_type;
 typedef pcl::PointCloud<pcl::PointXYZRGB> point_cloud;
 
