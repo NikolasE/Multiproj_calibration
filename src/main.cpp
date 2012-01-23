@@ -22,10 +22,9 @@
 #include "visualization.h"
 #include "cluster.h"
 #include "evaluation.h"
-
+#include "groundtruth.h"
 
 #include <algorithm>
-
 #include <time.h>
 #include <fstream>
 
@@ -40,8 +39,21 @@ using namespace sensor_msgs;
 int  main (int argc, char** argv)
 {
 
+  ros::init(argc, argv, "g2o_mocap");
+  ros::NodeHandle n;
 
-  srand ( time(NULL) );
+  Groundtruth gt;
+  gt.readPropFile("/home/engelhar/ros/mocap/data/quadrotor.prop");
+  gt.openBag("/home/engelhar/ros/mocap/data/2012-01-18-11-30-27.bag", &n);
+
+  ros::Time stamp;
+  for (uint i=0; i<100; ++i)
+    gt.getNextPose(stamp);
+
+  return 0;
+
+
+  srand ( 0 );
   //  ros::Time::init();
   //
   //
@@ -49,24 +61,13 @@ int  main (int argc, char** argv)
   //  return -1;
 
 
-  ros::init(argc, argv, "g2o_mocap");
-  ros::NodeHandle n;
+
   ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 10);
 
 
 
 
   //  assert(argc>1);
-
-
-
-
-
-  //  sim.createTriangle(&mo_fix);
-  //  optimizer.setObject(&mo);
-  //  optimizer.testVertex2Edge();
-  //  mo.getPoseFromVertices();
-
 
 
 
@@ -110,9 +111,9 @@ int  main (int argc, char** argv)
 
 
       vector<int> iter_cnt;
-//      for (int i=0; i<=20; i+=2) iter_cnt.push_back(i);
-//      for (int i=25; i<100; i+=20) iter_cnt.push_back(i);
-//      for (int i=100; i<=1000; i+=150) iter_cnt.push_back(i);
+      //      for (int i=0; i<=20; i+=2) iter_cnt.push_back(i);
+      //      for (int i=25; i<100; i+=20) iter_cnt.push_back(i);
+      //      for (int i=100; i<=1000; i+=150) iter_cnt.push_back(i);
       iter_cnt.push_back(g2o_iter_cnt);
 
 
@@ -136,7 +137,7 @@ int  main (int argc, char** argv)
         Simulator::createRandomPose(3,2*M_PI, start_pose, goal_pose); // zero-centered
         sim.createRect(&mo, 0, 3, 2);
         sim.trafoObject(&mo,goal_pose);
-//        ROS_WARN("goal_pose: %.2f %.2f %.2f r: %.2f %.2f %.2f ", goal_pose[0],goal_pose[1],goal_pose[2],goal_pose[3]/M_PI*180,goal_pose[4]/M_PI*180,goal_pose[5]/M_PI*180);
+        //        ROS_WARN("goal_pose: %.2f %.2f %.2f r: %.2f %.2f %.2f ", goal_pose[0],goal_pose[1],goal_pose[2],goal_pose[3]/M_PI*180,goal_pose[4]/M_PI*180,goal_pose[5]/M_PI*180);
 
         Observations obs = sim.computeProjections(&mo, false);
 
@@ -154,9 +155,9 @@ int  main (int argc, char** argv)
             Simulator::createRandomPose(3,M_PI, init_pose, init_pose);
           }
           else{
-//            ROS_WARN("last_poses: %.2f %.2f %.2f r: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
+            //            ROS_WARN("last_poses: %.2f %.2f %.2f r: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
             Simulator::createRandomPose(0,2*M_PI, tr, init_pose);
-//            ROS_WARN("new init: %.2f %.2f %.2f r: %.2f %.2f %.2f \n", init_pose[0],init_pose[1],init_pose[2],init_pose[3]/M_PI*180,init_pose[4]/M_PI*180,init_pose[5]/M_PI*180);
+            //            ROS_WARN("new init: %.2f %.2f %.2f r: %.2f %.2f %.2f \n", init_pose[0],init_pose[1],init_pose[2],init_pose[3]/M_PI*180,init_pose[4]/M_PI*180,init_pose[5]/M_PI*180);
           }
 
           //      ofstream off;
@@ -178,7 +179,7 @@ int  main (int argc, char** argv)
 
             // for each optimization, moved object is positioned at the same pose
             sim.createRect(&mo_opt, 0, 3, 2);
-//            ROS_WARN("starting with: %.2f %.2f %.2f r: %.2f %.2f %.2f \n", init_pose[0],init_pose[1],init_pose[2],init_pose[3]/M_PI*180,init_pose[4]/M_PI*180,init_pose[5]/M_PI*180);
+            //            ROS_WARN("starting with: %.2f %.2f %.2f r: %.2f %.2f %.2f \n", init_pose[0],init_pose[1],init_pose[2],init_pose[3]/M_PI*180,init_pose[4]/M_PI*180,init_pose[5]/M_PI*180);
 
             sim.trafoObject(&mo_opt,init_pose);
 
@@ -216,25 +217,25 @@ int  main (int argc, char** argv)
 
             Eigen::Affine3f t;
 
-//
-//            original.getTrafoTo(mo,t, tr);
-//            printf("goal  : %.2f %.2f %.2f r: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
+            //
+            //            original.getTrafoTo(mo,t, tr);
+            //            printf("goal  : %.2f %.2f %.2f r: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
             original.getTrafoTo(mo_opt,t, tr);
-//            printf("result: %.2f %.2f %.2f r: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
+            //            printf("result: %.2f %.2f %.2f r: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
 
 
             cl_man.addTrafo(t);
 
-//            printf("t: %.2f %.2f %.2f \nr: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
+            //            printf("t: %.2f %.2f %.2f \nr: %.2f %.2f %.2f \n", tr[0],tr[1],tr[2],tr[3]/M_PI*180,tr[4]/M_PI*180,tr[5]/M_PI*180);
 
-//            get max distance between corresponding points:
-//            double max_dist = mo.max_point_dist(mo_opt);
-//
-//            ROS_WARN("%i iter, %.2f max_error",iter_cnt[i], max_dist);
+            //            get max distance between corresponding points:
+            //            double max_dist = mo.max_point_dist(mo_opt);
+            //
+            //            ROS_WARN("%i iter, %.2f max_error",iter_cnt[i], max_dist);
             // off << iter_cnt[i] << " " << max_dist << endl;
 
             sendMarker(marker_pub, optimizer,&mo);
-//            ros::Duration(0.01).sleep();
+            //            ros::Duration(0.01).sleep();
 
           }
 
