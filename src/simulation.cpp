@@ -15,17 +15,12 @@ double Simulator::getGaussianSample(double mu, double sigma){
   double v=0;
   for (int i=0; i<12; ++i)
     v+= rand()*1.0/RAND_MAX;
-
   v/=6;
-
   return v*sigma+mu;
-
-
 }
 
-
 void Simulator::createRect(Mocap_object* mo, float z, float w, float h, float x_c, float y_c){
-  mo->cloud.points.clear();
+  mo->reset();
   mo->addVertex(x_c-w/2,y_c-h/2,z);
   mo->addVertex(x_c-w/2,y_c+h/2,z);
   mo->addVertex(x_c+w/2,y_c+h/2,z);
@@ -48,7 +43,7 @@ void Simulator::createRandomPose(float sig_trans, float sig_rot, float* mean, fl
 
 void Simulator::createTriangle(Mocap_object* mo){
 
-  mo->cloud.points.clear();
+  mo->reset();
   mo->addVertex(0,0,0);
   mo->addVertex(3,0,0);
   mo->addVertex(0,-1,0);
@@ -106,7 +101,14 @@ void Simulator::trafoObject(Mocap_object* mo, float dx, float dy, float dz,float
   Eigen::Affine3f trafo;
 //  pcl::getTransformation(dx+mean(0),dy+mean(1),dz+mean(2),phi, theta, psi,trafo);
   pcl::getTransformation(dx,dy,dz,phi,theta, psi,trafo);
-  pcl::transformPointCloud(mo->cloud, mo->cloud, trafo);
+
+  for (uint i=0; i<mo->points.size(); ++i){
+    if (mo->point_valid[i])
+      mo->points[i] = trafo*mo->points[i];
+
+  }
+
+//  pcl::transformPointCloud(mo->cloud, mo->cloud, trafo);
 }
 
 
@@ -117,12 +119,12 @@ Observations Simulator::computeProjections(Mocap_object* mo, bool show_image){
 
   Observations prj;
 
-  for (uint i=0; i<mo->cloud.points.size(); ++i){
-    point_type  c = mo->cloud.points[i];
-    float x_px = c.x/c.z*f_x+c_x;
-    float y_px = c.y/c.z*f_y+c_y;
+  for (uint i=0; i<mo->points.size(); ++i){
+    Eigen::Vector3f  c = mo->points[i];
+    float x_px = c.x()/c.z()*f_x+c_x;
+    float y_px = c.y()/c.z()*f_y+c_y;
 
-    if (c.z < 0)
+    if (c.z() < 0)
       std::cerr << "########### vertex " << i << " is behind the camera" << std::endl;
 
 //    printf("%i: %f %f \n",i, x_px, y_px);

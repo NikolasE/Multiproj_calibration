@@ -36,29 +36,38 @@ typedef map<int, CvPoint2D32f> Observations;
 void affine3fToXyzRpy(Eigen::Affine3f t, float* trafo);
 void xyzRpyToAffine3f(float* trafo, Eigen::Affine3f& t);
 
+
 struct Mocap_object {
 
-  point_cloud cloud;
+
+  ros::Time stamp;
+  vector<Eigen::Vector3f> points;
+  vector<bool> point_valid;
+  uint valid_point_cnt; // number of trues in point_valid
+
+  void reset();
+
+//   point_cloud cloud;
   vector<g2o::VertexTrackXYZ*> vertices;
 
   void addVertex(float x, float y, float z){
-    point_type p;
-    p.x = x; p.y=y; p.z=z;
-    cloud.points.push_back(p);
+    points.push_back(Eigen::Vector3f(x,y,z));
+    point_valid.push_back(true);
+    valid_point_cnt++;
   }
 
   void printObject(){
 
-    for (uint i=0; i<cloud.points.size(); ++i){
-      point_type c = cloud.points[i];
-      printf("v %i: %f %f %f \n", i, c.x,c.y, c.z);
+    for (uint i=0; i<points.size(); ++i){
+      Eigen::Vector3f c = points[i];
+      printf("v %i: %f %f %f \n", i, c.x(),c.y(), c.z());
     }
 
-    for (uint i=0; i<cloud.points.size()-1; ++i){
-      point_type v = cloud.points[i];
-      for (uint j=i+1; j<cloud.points.size(); ++j){
-        point_type c = cloud.points[j];
-        printf("rel (%i,%i): %f %f %f\n", i,j, c.x-v.x,c.y-v.y,c.z-v.y);
+    for (uint i=0; i<points.size()-1; ++i){
+      Eigen::Vector3f v = points[i];
+      for (uint j=i+1; j<points.size(); ++j){
+        Eigen::Vector3f c = points[j]-v;
+        printf("rel (%i,%i): %f %f %f\n", i,j, c.x(),c.y(),c.z());
       }
     }
 

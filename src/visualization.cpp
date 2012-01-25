@@ -84,23 +84,23 @@ int sendObject(ros::Publisher& marker_pub, int id, Mocap_object& obj, string ns,
   connections.color.r = r; connections.color.g = g; connections.color.b = b;
 
 
-  uint vertex_cnt = obj.cloud.points.size();
+  uint vertex_cnt = obj.points.size();
   geometry_msgs::Point gp;
   // add all vertices
   for (uint i=0; i<vertex_cnt; ++i){
-    point_type p = obj.cloud.points[i];
-    gp.x = p.x; gp.y = p.y; gp.z = p.z;
+    Eigen::Vector3f p = obj.points[i];
+    gp.x = p.x(); gp.y = p.y(); gp.z = p.z();
     vertices.points.push_back(gp);
   }
 
   // and also all connections
   for (uint i=0; i<vertex_cnt-1; ++i){
-    point_type p = obj.cloud.points[i];
-    gp.x = p.x; gp.y = p.y; gp.z = p.z;
+    Eigen::Vector3f p = obj.points[i];
+    gp.x = p.x(); gp.y = p.y(); gp.z = p.z();
     for (uint j=i+1; j<vertex_cnt; ++j){
       connections.points.push_back(gp);
-      p = obj.cloud.points[j];
-      geometry_msgs::Point gp2; gp2.x = p.x; gp2.y = p.y; gp2.z = p.z;
+      p = obj.points[j];
+      geometry_msgs::Point gp2; gp2.x = p.x(); gp2.y = p.y(); gp2.z = p.z();
       connections.points.push_back(gp2);
     }
   }

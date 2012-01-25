@@ -133,8 +133,8 @@ void Optimizer::addProjectionEdgesToGraph(){
 
 
   // one vertex for each marker, but not every marker has an observation
-  assert(m_obj->cloud.points.size() == m_obj->vertices.size());
-  assert(m_obj->cloud.points.size() >= obs.size());
+  assert(m_obj->points.size() == m_obj->vertices.size());
+  assert(m_obj->points.size() >= obs.size());
 
 
   // add camera
@@ -168,13 +168,11 @@ void Optimizer::addProjectionEdgesToGraph(){
 
 void Optimizer::addMocapObjectToGraph(){
 
-  uint n = m_obj->cloud.points.size();
+  uint n = m_obj->points.size();
 
   for (uint i=0; i<n; ++i){
-    point_type p = m_obj->cloud.points[i];
-
     g2o::VertexTrackXYZ* v = new g2o::VertexTrackXYZ();
-    v->setEstimate(Eigen::Vector3d(p.x,p.y,p.z));
+    v->setEstimate(m_obj->points[i].cast<double>());
     v->setId(i);
     v->setFixed(false);
     optimizer->addVertex(v,NULL);
@@ -183,20 +181,19 @@ void Optimizer::addMocapObjectToGraph(){
 
 
   for (uint i=0; i<n-1; ++i){
-    point_type v = m_obj->cloud.points[i];
+    Eigen::Vector3f v = m_obj->points[i];
     for (uint j=i+1; j<n; ++j){
-      point_type c = m_obj->cloud.points[j];
+      Eigen::Vector3f  c = m_obj->points[j];
 
       g2o::EdgeTrackXYZ_2* edge = new g2o::EdgeTrackXYZ_2();
       edge->vertices()[0] = m_obj->vertices[i];
       edge->vertices()[1] = m_obj->vertices[j];
       // large information to force constraint to be fulfilled
       edge->information() = Eigen::Matrix<double, 3, 3>::Identity()*10;
-      double measurement = sqrt(pow(c.x-v.x,2)+pow(c.y-v.y,2)+pow(c.z-v.z,2));
+      double measurement = (c-v).norm();
 
       //      cout << "edge between " << v << " and " << c << endl;
       //      cout << "meas: " << measurement << endl;
-
 
       edge->setMeasurementData(&measurement);
       optimizer->addEdge(edge);

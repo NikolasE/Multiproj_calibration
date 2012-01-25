@@ -22,21 +22,26 @@
 
 struct Groundtruth {
 
-  Groundtruth(){};
-  bool openBag(char* filename, ros::NodeHandle* nh_);
+  Groundtruth(){model_loaded = false;};
+  bool loadBag(char* filename);
 
   void readPropFile(char* filename);
 
-  Mocap_object getNextPose(ros::Time& timestamp);
+//  Mocap_object getNextPose(ros::Time& timestamp);
 
-
+  bool model_loaded;
   Mocap_object base_object;
+  void computePoses();
 
 private:
-  ros::NodeHandle* nh;
-  rosbag::Bag bag;
-  std::vector<std::string> topics;
-  rosbag::View* view;
+
+  vector<Mocap_object> object_instances;
+  vector<Eigen::Affine3f> poses;
+
+  uint partial_msg_cnt;
+  uint invalid_msg_cnt;
+  uint complete_msg_cnt;
+
 
 
 

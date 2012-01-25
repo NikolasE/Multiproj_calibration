@@ -44,11 +44,7 @@ int  main (int argc, char** argv)
 
   Groundtruth gt;
   gt.readPropFile("/home/engelhar/ros/mocap/data/quadrotor.prop");
-  gt.openBag("/home/engelhar/ros/mocap/data/2012-01-18-11-30-27.bag", &n);
-
-  ros::Time stamp;
-  for (uint i=0; i<100; ++i)
-    gt.getNextPose(stamp);
+  gt.loadBag("/home/engelhar/ros/mocap/data/2012-01-18-11-30-27.bag");
 
   return 0;
 

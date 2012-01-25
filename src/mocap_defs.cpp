@@ -4,35 +4,32 @@
 #include <pcl/common/transformation_from_correspondences.h>
 #include <pcl/common/transform.h>
 
+using namespace Eigen;
+
 void Mocap_object::getPoseFromVertices(){
-  assert(vertices.size() == cloud.points.size());
-
-  for (uint i=0; i<cloud.points.size(); ++i){
-    Eigen::Vector3d pose = vertices[i]->estimate();
-    cloud.points[i].x = pose(0);
-    cloud.points[i].y = pose(1);
-    cloud.points[i].z = pose(2);
+  assert(vertices.size() == points.size());
+  for (uint i=0; i<points.size(); ++i){
+    points[i] = vertices[i]->estimate().cast<float>();
   }
-
 }
 
 
 bool Mocap_object::isSameObject(Mocap_object& other, float dist_thres, float* max_dist){
 
-  if (cloud.points.size() != other.cloud.points.size()) return false;
+  if (points.size() != other.points.size()) return false;
 
   if (max_dist != NULL) *max_dist = -1;
 
-  uint n = cloud.points.size();
+  uint n = points.size();
   for (uint i=0; i<n-1; ++i){
-    point_type v = cloud.points[i];
-    point_type v_o = other.cloud.points[i];
+    Vector3f v = points[i];
+    Vector3f v_o = other.points[i];
     for (uint j=i+1; j<n; ++j){
-      point_type c = cloud.points[j];
-      point_type c_o = other.cloud.points[j];
+      Vector3f c = points[j];
+      Vector3f c_o = other.points[j];
 
-      double d1 = sqrt(pow(c.x-v.x,2)+pow(c.y-v.y,2)+pow(c.z-v.z,2));
-      double d2 = sqrt(pow(c_o.x-v_o.x,2)+pow(c_o.y-v_o.y,2)+pow(c_o.z-v_o.z,2));
+      double d1 = (c-v).norm();//sqrt(pow(c.x-v.x,2)+pow(c.y-v.y,2)+pow(c.z-v.z,2));
+      double d2 = (c_o-v_o).norm();//sqrt(pow(c_o.x-v_o.x,2)+pow(c_o.y-v_o.y,2)+pow(c_o.z-v_o.z,2));
 
       double diff = fabs(d1-d2);
 
@@ -71,18 +68,28 @@ bool Mocap_object::getTrafoTo(Mocap_object& other,Eigen::Affine3f& t, float* tra
 
   pcl::TransformationFromCorrespondences tfc;
 
-  // get mean
-  for (uint i=0; i<cloud.points.size(); ++i){
-    point_type from = cloud.points[i];
-    point_type to = other.cloud.points[i];
+  if (valid_point_cnt < 3 || other.valid_point_cnt < 3)
+    return false;
 
-    tfc.add(Eigen::Vector3f(from.x,from.y,from.z),Eigen::Vector3f(to.x,to.y,to.z));
+  // get mean
+  int match_cnt = 0;
+  for (uint i=0; i<points.size(); ++i){
+
+    if (!point_valid[i] || !other.point_valid[i])
+      continue;
+
+    tfc.add(points[i],other.points[i]);
+    match_cnt++;
   }
+
+  // two (or less) observations of corresponding markers are not enough
+  // to estimate the relative pose;
+  if (match_cnt<3)
+    return false;
 
   t = tfc.getTransformation();
 
   if (trafo!=NULL) affine3fToXyzRpy(t,trafo);
-
 
   return true;
 
@@ -92,27 +99,44 @@ bool Mocap_object::getTrafoTo(Mocap_object& other,Eigen::Affine3f& t, float* tra
 double Mocap_object::max_point_dist(Mocap_object& other, Eigen::Affine3f* trafo){
 
   double m = -1;
-  assert(cloud.points.size() == other.cloud.points.size());
+  assert(points.size() == other.points.size());
 
   Eigen::Affine3f inv = Eigen::Affine3f::Identity();
   if (trafo!=NULL) inv = trafo->inverse();
 
-  for (uint i=0; i<cloud.points.size(); ++i){
-    point_type a = cloud.points[i];
-    point_type b = other.cloud.points[i];
+  int match_cnt = 0;
+  for (uint i=0; i<points.size(); ++i){
+    if (!point_valid[i] || !other.point_valid[i])
+      continue;
 
-    Eigen::Vector3f b_3(b.x,b.y,b.z);
-    Eigen::Vector3f a_3(a.x,a.y,a.z);
+    Eigen::Vector3f b = points[i];
+    Eigen::Vector3f a = other.points[i];
 
-    b_3 = inv*b_3; // inv is unity if no trafo given!
+    b = inv*b; // inv is unity if no trafo given!
 
-    double d = (b_3-a_3).norm();
+    match_cnt++;
+    double d = (b-a).norm();
     if (d>m)  m=d;
 
+  }
+
+  if (match_cnt == 0){
+    ROS_WARN("max_point_dist computed, but no valid pairs compared");
+    return -1; // as initialization...
   }
 
   return m;
 
 
+
+}
+
+void Mocap_object::reset(){
+
+  points.clear();
+  point_valid.clear();
+  valid_point_cnt = 0;
+  vertices.clear();
+  stamp.fromNSec(-1);
 
 }
