@@ -14,7 +14,7 @@
 //#include <opencv/highgui.h>
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
-
+#include <pcl/common/transform.h>
 
 #include "mocap_defs.h"
 #include "simulation.h"
@@ -39,34 +39,118 @@ using namespace sensor_msgs;
 int  main (int argc, char** argv)
 {
 
+
+
   ros::init(argc, argv, "g2o_mocap");
   ros::NodeHandle n;
-
-  Groundtruth gt;
-  gt.readPropFile("/home/engelhar/ros/mocap/data/quadrotor.prop");
-  gt.loadBag("/home/engelhar/ros/mocap/data/2012-01-18-11-30-27.bag");
-
-  return 0;
-
-
-  srand ( 0 );
-  //  ros::Time::init();
-  //
-  //
-  //  //  checkStartingPose();
-  //  return -1;
-
-
-
   ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 10);
 
 
+#define QUADCOPTER
+
+#ifdef QUADCOPTER
+
+  assert(argc>2);
+
+  Simulator sim_;
+
+  vector<Camera> cams;
+  Camera cam;
+  pcl::getTransformation(0,0,5,M_PI,0,0,cam.pose);
+  cam.id = cams.size();
+  cams.push_back(cam);
+  pcl::getTransformation(0,2,5,M_PI,0,0,cam.pose); cam.id = cams.size();
+  cams.push_back(cam);
+  pcl::getTransformation(-5,1,3,M_PI/2,M_PI,M_PI/2,cam.pose); cam.id = cams.size();
+  cams.push_back(cam);
+
+  Groundtruth gt;
+  gt.readBagPropFile("/home/engelhar/ros/mocap/data/quadrotor.prop");
+  gt.readSimPropFile("/home/engelhar/ros/mocap/data/foo.prop");
+  gt.loadBag("/home/engelhar/ros/mocap/data/2012-01-18-11-30-27.bag");
 
 
-  //  assert(argc>1);
+
+
+  gt.skip = 10;
+  gt.file_idx = atoi(argv[1]);//8000; // skip boring start of file
+
+  Mocap_object mo;
 
 
 
+  while (gt.getNextInstance(mo)){
+
+    // quadcopter crashes afterwards :(
+    if (gt.file_idx > 22000) break;
+
+
+    Eigen::Affine3f trafo;
+    bool valid = gt.bag_base_object.getTrafoTo(mo, trafo);
+
+    if (!valid) continue;
+
+
+
+
+    for (int iter = 1000 ; iter<=1000; iter += 200){
+
+//      cout << "iter " << iter << endl;
+
+      Mocap_object mo_sim = gt.bag_sim_object;
+      mo_sim.moveObject(trafo);
+
+      int id=0;
+      id = sendObject(marker_pub, id, mo_sim, "gt_marker", 1,0,1);
+
+
+      Mocap_object init_object = gt.bag_sim_object;
+      Optimizer optimizer;
+      optimizer.setCamParams(&cams[0]);
+      optimizer.setObject(&init_object); // has to be done before initOptimizer
+      optimizer.initOptimizer();
+
+
+      int total_obs = 0;
+
+      for (uint i=0; i<cams.size(); ++i){
+
+        int obs_cnt = sim_.computeObservations(&mo_sim,&cams[i],true);
+
+        total_obs += obs_cnt;
+
+        if (obs_cnt > 0){
+//          ROS_INFO("cam %i with %i obs", int(i),obs_cnt);
+          optimizer.addCameraToGraph(cams[i]);
+        }
+
+        id = sendCam(marker_pub, cams[i], id,  "gt_marker_cam", 1,0,0);
+        id = sendProjectionRays(marker_pub, cams[i], id, "gt_marker_proj", 0,0,1);
+      }
+
+      // TODO: use last pose as init
+      if (total_obs>=4){
+
+        optimizer.optimize(iter);
+        init_object.getPoseFromVertices();
+        id = sendObject(marker_pub, id, init_object, "gt_marker", 0,1,0);
+      }else
+      {
+        id = sendObject(marker_pub, id, gt.bag_sim_object, "gt_marker", 1,0,0);
+      }
+
+      ros::Duration(atof(argv[2])).sleep();
+    }
+
+    //    cout << gt.getFilePosition() << endl;
+    //    ros::Duration(atof(argv[2])).sleep();
+  }
+
+  return 0;
+
+#else
+
+  srand ( 0 );
 
   // random goal pose
   float goal_pose[6];
@@ -125,6 +209,7 @@ int  main (int argc, char** argv)
         Mocap_object mo;
         Mocap_object mo_opt;
         ClusterManager cl_man;
+        Camera cam;
 
         Mocap_object original;
         sim.createRect(&original, 0, 3, 2);
@@ -135,7 +220,7 @@ int  main (int argc, char** argv)
         sim.trafoObject(&mo,goal_pose);
         //        ROS_WARN("goal_pose: %.2f %.2f %.2f r: %.2f %.2f %.2f ", goal_pose[0],goal_pose[1],goal_pose[2],goal_pose[3]/M_PI*180,goal_pose[4]/M_PI*180,goal_pose[5]/M_PI*180);
 
-        Observations obs = sim.computeProjections(&mo, false);
+        int cnt = sim.computeObservations(&mo, &cam,  false);
 
         // last_trafo
         float tr[6];
@@ -192,14 +277,18 @@ int  main (int argc, char** argv)
             //        }
             //      }
 
-            optimizer.setCamParams(sim.c_x,sim.c_y,sim.f_x, sim.f_y);
-            optimizer.setOberservations(obs);
+            optimizer.setCamParams(&cam);
+            //            optimizer.setOberservations(obs);
             optimizer.setObject(&mo_opt);
-            optimizer.InitOptimization();
+            //            optimizer.InitOptimization();
 
+            optimizer.initOptimizer();
 
+            optimizer.addCameraToGraph(cam);
 
             ros::Time begin = ros::Time::now();
+
+            optimizer.optimizer->initializeOptimization();
 
             optimizer.optimize(iter_cnt[i]);
 
@@ -310,12 +399,11 @@ int  main (int argc, char** argv)
     }
   }
 
-
-
-
   of_time.close();
 
   return 0;
+#endif
+
 }
 
 

@@ -30,30 +30,30 @@ class Optimizer {
 
 public:
   Mocap_object* m_obj;
-  Observations obs;
+
   g2o::SparseOptimizer* optimizer;
   float cx, cy, fx, fy;
 
-  void setCamParams(float cx_, float cy_, float fx_, float fy_){
-    cx=cx_; cy=cy_; fx=fx_; fy=fy_; }
+  void setCamParams(Camera* cam){
+    cx=cam->c_x; cy=cam->c_y; fx=cam->f_x; fy=cam->f_y; }
 
   void setObject(Mocap_object* mo){m_obj = mo; m_obj->vertices.clear();}
-  void setOberservations(Observations obs_){obs = obs_;}
 
   void testVertex2Edge();
 
-
-  void InitOptimization();
+  void initOptimizer();
 
   void optimize(int iter);
 
   void getOptimizedObject(Mocap_object* new_obj);
   void getRelPose(Mocap_object& moved, Mocap_object& init);
 
+  void addCameraToGraph(Camera& cam);
 private:
-  void initOptimizer();
+
+  uint vertex_id;
   void addMocapObjectToGraph();
-  void addProjectionEdgesToGraph();
+
 
 
 

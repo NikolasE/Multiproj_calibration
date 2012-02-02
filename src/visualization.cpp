@@ -13,7 +13,7 @@
 
 
 
-int sendProjectionRays(ros::Publisher& marker_pub, Optimizer& optimizer, int id, string ns, float r, float g, float b){
+int sendProjectionRays(ros::Publisher& marker_pub, Camera& cam, int id, string ns, float r, float g, float b){
 
   visualization_msgs::Marker rays;
 
@@ -22,36 +22,139 @@ int sendProjectionRays(ros::Publisher& marker_pub, Optimizer& optimizer, int id,
   rays.header.stamp = ros::Time::now();
   rays.pose.orientation.w = 1.0;
   rays.id = id;
+
+
+  // true: show only observations in the z=1-plane
+  // false: show ray from cam-center through the observations
+  bool show_observations = false;
+
   rays.action = visualization_msgs::Marker::ADD;
-  rays.type = visualization_msgs::Marker::LINE_LIST;
+
+  if (show_observations){
+    rays.type = visualization_msgs::Marker::SPHERE_LIST;
+    rays.scale.x = rays.scale.y = rays.scale.z = 0.02;
+  }else{
+    rays.type = visualization_msgs::Marker::LINE_LIST;
+    rays.scale.x = rays.scale.y = rays.scale.z = 0.01;
+  }
 
 
-  // TODO (nice to have): use spheres as markers on the projection ray (one dot every 50cm)
-
-
-
-  rays.scale.x = 0.05;
   rays.color.a = 1;
   rays.color.r = r; rays.color.g = g; rays.color.b = b;
 
-  for (uint i=0; i<optimizer.obs.size(); ++i){
 
-    // TODO: trafo point into camera image
+  Eigen::Affine3f c2w = cam.pose.inverse();
 
-    float a = (optimizer.obs[i].x-optimizer.cx)/optimizer.fx;
-    float b = (optimizer.obs[i].y-optimizer.cy)/optimizer.fy;
+
+  for (Observations::iterator it = cam.obs.begin(); it !=cam.obs.end(); ++it){
+    Eigen::Vector3f ev;
     geometry_msgs::Point p;
-    p.x=p.y=p.z=0;
-    rays.points.push_back(p);
+    if (!show_observations){
+      ev = cam.pose*Eigen::Vector3f(0,0,0);
+      p.x = ev.x(); p.y = ev.y();p.z = ev.z();
+      rays.points.push_back(p);
+    }
 
-    float n = sqrt(a*a+b*b+1);
-    float l = 20; // length of projection ray
-    p.x = a/n*l; p.y = b/n*l; p.z = 1/n*l;
+    // z = 1;
+    float a = (it->second.x-cam.c_x)/cam.f_x;
+    float b = (it->second.y-cam.c_y)/cam.f_y;
+
+    float n,l;
+    if (show_observations)
+      n = l = 1;
+    else {
+      n = sqrt(a*a+b*b+1);
+      l = 10; // length of projection ray
+    }
+    ev.x() = a/n*l; ev.y() = b/n*l; ev.z() = 1/n*l;
+
+    ev = cam.pose*ev;
+    p.x = ev.x(); p.y = ev.y(); p.z = ev.z();
     rays.points.push_back(p);
   }
 
 
   marker_pub.publish(rays);
+
+  return id+1;
+}
+
+
+
+int sendCam(ros::Publisher& marker_pub, Camera& cam, int id, string ns, float r, float g, float b){
+
+  visualization_msgs::Marker arrow;
+  arrow.header.frame_id = "/mocap_frame";
+  arrow.header.stamp = ros::Time::now();
+  arrow.ns = ns;
+  arrow.pose.orientation.w = 1.0;
+  arrow.action = visualization_msgs::Marker::ADD;
+
+  arrow.type = visualization_msgs::Marker::LINE_LIST;
+
+  arrow.id = id;
+
+
+  arrow.scale.x = 0.01; // line width
+  arrow.color.a = 1; arrow.color.r = r; arrow.color.g = g; arrow.color.b = b;
+
+
+
+  Eigen::Affine3f pose = cam.pose;
+  geometry_msgs::Point gp,gp2;
+
+
+  // compute corners of field of view
+  CvPoint2D32f corners[4]; // pos in pixel coordinates
+
+  corners[0].x = 0;
+  corners[0].y = 0;
+
+  corners[1].x = cam.c_width;
+  corners[1].y = 0;
+
+  corners[2].x = cam.c_width;
+  corners[2].y = cam.c_height;
+
+  corners[3].x = 0;
+  corners[3].y = cam.c_height;
+
+  Eigen::Vector3f d3_pos[4]; // has to be eigen for pose-multiplication
+  float Z = 1;
+
+  for (uint i=0; i<4; ++i){
+    d3_pos[i].z() = Z;
+    d3_pos[i].x() = (corners[i].x - cam.c_x)*d3_pos[i].z()/cam.f_x;
+    d3_pos[i].y() = (corners[i].y - cam.c_y)*d3_pos[i].z()/cam.f_y;
+
+    d3_pos[i] = pose*d3_pos[i];
+  }
+
+
+
+
+  // origin of camera
+  Eigen::Vector3f p(0,0,0);
+  p = pose*p;
+  gp.x = p.x(); gp.y = p.y(); gp.z = p.z();
+
+  // cam to extremal points
+  for (uint i=0; i<4; ++i){
+    arrow.points.push_back(gp);
+    gp2.x = d3_pos[i].x(); gp2.y = d3_pos[i].y(); gp2.z = d3_pos[i].z();
+    arrow.points.push_back(gp2);
+  }
+
+  // edges of field of view
+  for (uint i=0; i<4; ++i){
+    gp2.x = d3_pos[i].x(); gp2.y = d3_pos[i].y(); gp2.z = d3_pos[i].z();
+    arrow.points.push_back(gp2);
+    gp2.x = d3_pos[(i+1)%4].x(); gp2.y = d3_pos[(i+1)%4].y(); gp2.z = d3_pos[(i+1)%4].z();
+    arrow.points.push_back(gp2);
+
+  }
+
+  marker_pub.publish(arrow);
 
   return id+1;
 }
@@ -68,18 +171,18 @@ int sendObject(ros::Publisher& marker_pub, int id, Mocap_object& obj, string ns,
   vertices.pose.orientation.w = 1.0;
   vertices.action = visualization_msgs::Marker::ADD;
   connections = vertices;
-  vertices.type = visualization_msgs::Marker::POINTS;
+  vertices.type = visualization_msgs::Marker::SPHERE_LIST;
   connections.type = visualization_msgs::Marker::LINE_LIST;
 
   vertices.id = id;
   connections.id = id+1;
 
 
-  vertices.scale.x = vertices.scale.y = vertices.scale.z = 0.2;
+  vertices.scale.x = vertices.scale.y = vertices.scale.z = 0.02;
   vertices.color.a = 1;
   vertices.color.r = r; vertices.color.g = g; vertices.color.b = b;
 
-  connections.scale.x = 0.05;
+  connections.scale.x = 0.01;
   connections.color.a = 1;
   connections.color.r = r; connections.color.g = g; connections.color.b = b;
 
@@ -88,16 +191,22 @@ int sendObject(ros::Publisher& marker_pub, int id, Mocap_object& obj, string ns,
   geometry_msgs::Point gp;
   // add all vertices
   for (uint i=0; i<vertex_cnt; ++i){
-    Eigen::Vector3f p = obj.points[i];
-    gp.x = p.x(); gp.y = p.y(); gp.z = p.z();
-    vertices.points.push_back(gp);
+    if (obj.point_valid[i]){
+      Eigen::Vector3f p = obj.points[i];
+      gp.x = p.x(); gp.y = p.y(); gp.z = p.z();
+      vertices.points.push_back(gp);
+    }
   }
 
   // and also all connections
   for (uint i=0; i<vertex_cnt-1; ++i){
+    if (!obj.point_valid[i]) continue;
+
     Eigen::Vector3f p = obj.points[i];
     gp.x = p.x(); gp.y = p.y(); gp.z = p.z();
     for (uint j=i+1; j<vertex_cnt; ++j){
+      if (!obj.point_valid[j]) continue;
+
       connections.points.push_back(gp);
       p = obj.points[j];
       geometry_msgs::Point gp2; gp2.x = p.x(); gp2.y = p.y(); gp2.z = p.z();
@@ -109,7 +218,7 @@ int sendObject(ros::Publisher& marker_pub, int id, Mocap_object& obj, string ns,
   marker_pub.publish(vertices);
   marker_pub.publish(connections);
 
-  return id+1;
+  return id+2;
 
 }
 
@@ -117,7 +226,7 @@ void sendMarker(ros::Publisher& marker_pub, Optimizer& optimizer, Mocap_object* 
 
   int id = 0;
 
-  id = sendProjectionRays(marker_pub,optimizer, id, "ns_projections", 0,0,1); // blue
+  //  id = sendProjectionRays(marker_pub,optimizer, id, "ns_projections", 0,0,1); // blue
   id = sendObject(marker_pub,id, *optimizer.m_obj, "ns_moved_object", 1,0,0); // red
 
   if (fixed!=NULL){

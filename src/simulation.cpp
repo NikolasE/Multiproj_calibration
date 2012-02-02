@@ -112,45 +112,57 @@ void Simulator::trafoObject(Mocap_object* mo, float dx, float dy, float dz,float
 }
 
 
-Observations Simulator::computeProjections(Mocap_object* mo, bool show_image){
+int Simulator::computeObservations(Mocap_object* mo, Camera* cam,  bool show_image){
 
-  if (show_image)
-    cvNamedWindow("Projection",1);
 
-  Observations prj;
-
-  for (uint i=0; i<mo->points.size(); ++i){
-    Eigen::Vector3f  c = mo->points[i];
-    float x_px = c.x()/c.z()*f_x+c_x;
-    float y_px = c.y()/c.z()*f_y+c_y;
-
-    if (c.z() < 0)
-      std::cerr << "########### vertex " << i << " is behind the camera" << std::endl;
-
-//    printf("%i: %f %f \n",i, x_px, y_px);
-
-    prj[i] = cvPoint2D32f(x_px,y_px);
-
-    //    if (x_px < 0 || y_px < 0 || x_px >= c_width || y_px >= c_height)
-    //      printf("not within image! \n ");
+  char img_name[100];
+  if (show_image){
+    sprintf(img_name,"Projection_%i", cam->id);
+    cvNamedWindow(img_name,1);
   }
 
+  cam->obs.clear();
+
+  Eigen::Affine3f c2w = cam->pose.inverse();
+
+  for (uint i=0; i<mo->points.size(); ++i){
+    if (!mo->point_valid[i]) continue;
+    Eigen::Vector3f  c = mo->points[i];
+
+    c = c2w*c;
+
+//    ROS_INFO("pt in cam frame: %f %f %f", c.x(), c.y(), c.z());
+
+    float x_px = c.x()/c.z()*cam->f_x+cam->c_x;
+    float y_px = c.y()/c.z()*cam->f_y+cam->c_y;
+
+    // point behind camera or not within field of view
+    if (c.z() < 0 || x_px < 0 || y_px < 0 || x_px >= cam->c_width || y_px >= cam->c_height){
+      continue;
+    }
+
+    cam->obs[i] = cvPoint2D32f(x_px,y_px);
+
+  }
 
   if (show_image) {
     // print on image
     cvSet(img, cvScalar(0,0,0));
-    for (uint i=0; i<prj.size(); ++i){
-      float x = prj[i].x; float y = prj[i].y;
-      cvCircle(img, cvPoint(x,y),5, CV_RGB(0,255,0),2);
+
+    for (Observations::iterator it = cam->obs.begin(); it!=cam->obs.end(); ++it){
+      cvCircle(img, cvPoint(it->second.x,it->second.y),3, CV_RGB(0,255,0),2);
     }
 
-    for (uint i=0; i<prj.size(); ++i){
-      float x = prj[i].x; float y = prj[i].y;
-      float x_ = prj[(i+1)%prj.size()].x; float y_ = prj[(i+1)%prj.size()].y;
-      cvLine(img,cvPoint(x,y),cvPoint(x_,y_), CV_RGB(255,0,0),2);
-    }
-    cvShowImage("Projection", img);
+//    for (uint i=0; i<prj.size(); ++i){
+//      float x = prj[i].x; float y = prj[i].y;
+//      float x_ = prj[(i+1)%prj.size()].x; float y_ = prj[(i+1)%prj.size()].y;
+//      cvLine(img,cvPoint(x,y),cvPoint(x_,y_), CV_RGB(255,0,0),2);
+//    }
+    cvShowImage(img_name, img);
+    cvWaitKey(5);
   }
 
-  return prj;
+
+  return cam->obs.size();
+
 }

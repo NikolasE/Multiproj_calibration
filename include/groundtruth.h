@@ -22,19 +22,35 @@
 
 struct Groundtruth {
 
-  Groundtruth(){model_loaded = false;};
+  Groundtruth(){model_loaded = false; sim_model_loaded = false;};
   bool loadBag(char* filename);
 
-  void readPropFile(char* filename);
 
-//  Mocap_object getNextPose(ros::Time& timestamp);
+  void readSimPropFile(char* filename);
+  void readBagPropFile(char* filename);
+  bool getNextInstance(Mocap_object& obj);
+  bool getNextSimInstance(Mocap_object& obj);
 
-  bool model_loaded;
-  Mocap_object base_object;
+
+
   void computePoses();
+
+  uint getInstanceCound() { return object_instances.size();}
+  uint getFilePosition() { return file_idx;}
+  uint skip;
+  uint file_idx; // should be private
+  Mocap_object bag_base_object;
+  Mocap_object bag_sim_object;
 
 private:
 
+
+
+  bool model_loaded;
+  bool sim_model_loaded;
+
+
+  void readPropFile(char* filename, Mocap_object& mo);
   vector<Mocap_object> object_instances;
   vector<Eigen::Affine3f> poses;
 

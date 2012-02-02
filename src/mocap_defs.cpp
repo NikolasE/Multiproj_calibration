@@ -14,9 +14,18 @@ void Mocap_object::getPoseFromVertices(){
 }
 
 
+void Mocap_object::moveObject(Eigen::Affine3f& trafo){
+  for (uint i=0; i<points.size(); ++i)
+    if (point_valid[i])
+      points[i] = trafo*points[i];
+}
+
 bool Mocap_object::isSameObject(Mocap_object& other, float dist_thres, float* max_dist){
 
-  if (points.size() != other.points.size()) return false;
+  if (points.size() != other.points.size()) {
+    ROS_WARN("isSameObject: %i != %i", (int)points.size(), (int)other.points.size() );
+    return false;
+  }
 
   if (max_dist != NULL) *max_dist = -1;
 
@@ -24,19 +33,21 @@ bool Mocap_object::isSameObject(Mocap_object& other, float dist_thres, float* ma
   for (uint i=0; i<n-1; ++i){
     Vector3f v = points[i];
     Vector3f v_o = other.points[i];
+
+    if (!point_valid[i] || ! other.point_valid[i])
+      continue;
+
     for (uint j=i+1; j<n; ++j){
+      if (!point_valid[j] || ! other.point_valid[j])
+        continue;
+
       Vector3f c = points[j];
       Vector3f c_o = other.points[j];
 
-      double d1 = (c-v).norm();//sqrt(pow(c.x-v.x,2)+pow(c.y-v.y,2)+pow(c.z-v.z,2));
-      double d2 = (c_o-v_o).norm();//sqrt(pow(c_o.x-v_o.x,2)+pow(c_o.y-v_o.y,2)+pow(c_o.z-v_o.z,2));
+      double d1 = (c-v).norm();
+      double d2 = (c_o-v_o).norm();
 
       double diff = fabs(d1-d2);
-
-      //      cout << "edge between " << v << " and " << c << endl;
-      //      cout << "and edge between " << v_o << " and " << c_o << endl;
-      //      printf("d1,d2: %f %f , abs: %f\n", d1, d2, diff);
-
 
       if (max_dist != NULL && *max_dist<diff)
         *max_dist = diff;
@@ -68,23 +79,36 @@ bool Mocap_object::getTrafoTo(Mocap_object& other,Eigen::Affine3f& t, float* tra
 
   pcl::TransformationFromCorrespondences tfc;
 
-  if (valid_point_cnt < 3 || other.valid_point_cnt < 3)
+  if (valid_point_cnt < 4 || other.valid_point_cnt < 4){
     return false;
+  }
 
   // get mean
-  int match_cnt = 0;
-  for (uint i=0; i<points.size(); ++i){
+  uint match_cnt = 0;
+ for (uint i=0; i<points.size(); ++i){
 
-    if (!point_valid[i] || !other.point_valid[i])
+//  for (Observations::iterator it = )
+
+    if (!point_valid[i])
       continue;
+
+//    if (!other.point_valid[i]){
+////      ROS_INFO("point %i invalid", i);
+//      continue;
+//    }
+
+//    cout << "i: " << i << endl;
+//    cout << points[i] << endl;
+//    cout << other.points[i] << endl;
 
     tfc.add(points[i],other.points[i]);
     match_cnt++;
   }
 
-  // two (or less) observations of corresponding markers are not enough
-  // to estimate the relative pose;
-  if (match_cnt<3)
+
+ // since the MoCap confuses some points, only full measurements are used
+// ROS_INFO("matches: %i", match_cnt);
+  if (match_cnt < points.size())
     return false;
 
   t = tfc.getTransformation();

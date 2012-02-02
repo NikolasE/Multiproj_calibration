@@ -34,6 +34,7 @@ int ClusterManager::findMedian(vector<int>& poses){
   ROS_INFO("med: %i, min error: %f",med, min_error );
 
   return med;
+
 }
 
 

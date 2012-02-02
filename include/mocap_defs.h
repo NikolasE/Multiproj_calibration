@@ -37,6 +37,25 @@ void affine3fToXyzRpy(Eigen::Affine3f t, float* trafo);
 void xyzRpyToAffine3f(float* trafo, Eigen::Affine3f& t);
 
 
+struct Camera {
+  uint id;
+  Eigen::Affine3f pose;
+  g2o::VertexSE3* vertex;
+  Observations obs;
+
+  Camera() {pose = Eigen::Affine3f::Identity(); }
+
+  static const float c_width = 640;
+  static const float c_height = 480;
+
+
+  static const float c_x = 319.5;
+  static const float c_y = 239.5;
+  static const float f_x = 525;
+  static const float f_y = 525;
+
+};
+
 struct Mocap_object {
 
 
@@ -44,6 +63,9 @@ struct Mocap_object {
   vector<Eigen::Vector3f> points;
   vector<bool> point_valid;
   uint valid_point_cnt; // number of trues in point_valid
+
+  Eigen::Affine3f gt_trafo;
+  bool gt_trafo_valid;
 
   void reset();
 
@@ -82,13 +104,13 @@ struct Mocap_object {
   // assumes that object is defined by its distances
   bool isSameObject(Mocap_object& other, float dist_thres, float* max_dist = NULL);
 
-
-
   // trafo should be array of length 6 with (x,y,z,phi, theta, psi) (in rad)
-  bool getTrafoTo(Mocap_object& other,Eigen::Affine3f& t, float* trafo = NULL);
+  bool getTrafoTo(Mocap_object& other, Eigen::Affine3f& t, float* trafo = NULL);
 
   // inverse of trafo is applied to other-object (if not NULL)
   double max_point_dist(Mocap_object& other, Eigen::Affine3f* trafo = NULL);
+
+  void moveObject(Eigen::Affine3f& trafo);
 
 };
 
