@@ -112,6 +112,11 @@ struct Mocap_object {
 
   void moveObject(Eigen::Affine3f& trafo);
 
+private:
+  // compare eval/residual_mean.txt
+  // set to -1 to deactivate
+  static const float threshold_max_residual = 0.4/100;// 0.4cm
+
 };
 
 

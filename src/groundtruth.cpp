@@ -45,17 +45,22 @@ bool Groundtruth::getNextInstance(Mocap_object& obj){
 void Groundtruth::computePoses(){
   assert(model_loaded);
 
-  float residual;
+//  float residual;
 
-  ofstream off("/home/engelhar/Desktop/residual.txt");
+//  ofstream off("/home/engelhar/Desktop/residual.txt");
+
+  int valid_cnt = 0;
 
   for (uint i=0; i<object_instances.size(); ++i){
     Mocap_object* mo = &object_instances[i];
-    mo->gt_trafo_valid = bag_base_object.getTrafoTo(*mo, mo->gt_trafo, &residual);
-    off << residual << endl;
+    mo->gt_trafo_valid = bag_base_object.getTrafoTo(*mo, mo->gt_trafo);//, &residual);
+//    off << residual << endl;
+    if (mo->gt_trafo_valid) valid_cnt++;
   }
 
-  off.close();
+  ROS_INFO("valid %i", valid_cnt);
+
+//  off.close();
 
 }
 

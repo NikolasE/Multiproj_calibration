@@ -79,9 +79,9 @@ bool Mocap_object::getTrafoTo(Mocap_object& other,Eigen::Affine3f& t,float* resi
 
   pcl::TransformationFromCorrespondences tfc;
 
-//  if (valid_point_cnt < 4 || other.valid_point_cnt < 4){
-//    return false;
-//  }
+  //  if (valid_point_cnt < 4 || other.valid_point_cnt < 4){
+  //    return false;
+  //  }
 
   // get mean
   uint match_cnt = 0;
@@ -117,29 +117,31 @@ bool Mocap_object::getTrafoTo(Mocap_object& other,Eigen::Affine3f& t,float* resi
 
   if (trafo!=NULL) affine3fToXyzRpy(t,trafo);
 
-  if (residual!=NULL){
+  if (threshold_max_residual>0 || residual != NULL){
 
     // get sum of distances from moved object to original
 
-    *residual = 0;
-    for (uint i=0; i<points.size(); ++i){
+    double max_err = 0;
+    float res = 0;
 
-      //  for (Observations::iterator it = )
+    for (uint i=0; i<points.size(); ++i){
 
       if (!point_valid[i] || !other.point_valid[i])
         continue;
 
+      // dist between corresponding points after trafo
+      double n = (t*points[i]-other.points[i]).norm();
 
-      Vector3f f = t*points[i];
-      float n = (f-other.points[i]).norm();
-
-
-      if (n>*residual)
-        *residual = n;
-//      *residual += (f-other.points[i]).norm()/match_cnt;
+      max_err = max(max_err,n);
+      res += n/match_cnt;
     }
 
-    ROS_WARN("residual: %f", *residual);
+    if (residual != NULL)
+      *residual = res;
+
+    if (threshold_max_residual > 0 && max_err > threshold_max_residual)
+      return false;
+
 
   }
 

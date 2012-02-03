@@ -69,7 +69,7 @@ int  main (int argc, char** argv)
   gt.loadBag("/home/engelhar/ros/mocap/data/2012-01-18-11-30-27.bag");
 
 
-  return 0;
+//  return 0;
 
   assert(argc>2);
 
@@ -86,13 +86,11 @@ int  main (int argc, char** argv)
     if (gt.file_idx > 22000) break;
 
 
-    Eigen::Affine3f trafo;
-    bool valid = gt.bag_base_object.getTrafoTo(mo, trafo);
 
-    if (!valid) continue;
+//    bool valid = gt.bag_base_object.getTrafoTo(mo, trafo);
 
 
-
+    Eigen::Affine3f trafo = mo.gt_trafo;
 
     for (int iter = 1000 ; iter<=1000; iter += 200){
 
@@ -130,7 +128,7 @@ int  main (int argc, char** argv)
       }
 
       // TODO: use last pose as init
-      if (total_obs>=4){
+      if (total_obs>=4 && mo.gt_trafo_valid){
 
         optimizer.optimize(iter);
         init_object.getPoseFromVertices();
@@ -139,6 +137,10 @@ int  main (int argc, char** argv)
       {
         id = sendObject(marker_pub, id, gt.bag_sim_object, "gt_marker", 1,0,0);
       }
+
+      if (!mo.gt_trafo_valid)
+        ROS_WARN("gt-trafo invalid");
+
 
       ros::Duration(atof(argv[2])).sleep();
     }
