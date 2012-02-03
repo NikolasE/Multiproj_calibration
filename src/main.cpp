@@ -50,7 +50,6 @@ int  main (int argc, char** argv)
 
 #ifdef QUADCOPTER
 
-  assert(argc>2);
 
   Simulator sim_;
 
@@ -70,13 +69,15 @@ int  main (int argc, char** argv)
   gt.loadBag("/home/engelhar/ros/mocap/data/2012-01-18-11-30-27.bag");
 
 
+  return 0;
+
+  assert(argc>2);
 
 
-  gt.skip = 10;
+  gt.skip = 1;
   gt.file_idx = atoi(argv[1]);//8000; // skip boring start of file
 
   Mocap_object mo;
-
 
 
   while (gt.getNextInstance(mo)){

@@ -23,11 +23,11 @@
 struct Groundtruth {
 
   Groundtruth(){model_loaded = false; sim_model_loaded = false;};
-  bool loadBag(char* filename);
+  bool loadBag(const char* filename);
 
 
-  void readSimPropFile(char* filename);
-  void readBagPropFile(char* filename);
+  void readSimPropFile(const char* filename);
+  void readBagPropFile(const char* filename);
   bool getNextInstance(Mocap_object& obj);
   bool getNextSimInstance(Mocap_object& obj);
 
@@ -50,7 +50,7 @@ private:
   bool sim_model_loaded;
 
 
-  void readPropFile(char* filename, Mocap_object& mo);
+  void readPropFile(const char* filename, Mocap_object& mo);
   vector<Mocap_object> object_instances;
   vector<Eigen::Affine3f> poses;
 

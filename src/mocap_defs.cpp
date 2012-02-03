@@ -70,7 +70,7 @@ void xyzRpyToAffine3f(float* trafo, Eigen::Affine3f& t){
   pcl::getTransformation(trafo[0],trafo[1],trafo[2],trafo[3],trafo[4],trafo[5],t);
 }
 
-bool Mocap_object::getTrafoTo(Mocap_object& other,Eigen::Affine3f& t, float* trafo){
+bool Mocap_object::getTrafoTo(Mocap_object& other,Eigen::Affine3f& t,float* residual,  float* trafo){
 
   if (!isSameObject(other, 0.1)){
     cout << "#### getTrafoTo: not the same object" << endl;
@@ -79,41 +79,69 @@ bool Mocap_object::getTrafoTo(Mocap_object& other,Eigen::Affine3f& t, float* tra
 
   pcl::TransformationFromCorrespondences tfc;
 
-  if (valid_point_cnt < 4 || other.valid_point_cnt < 4){
-    return false;
-  }
+//  if (valid_point_cnt < 4 || other.valid_point_cnt < 4){
+//    return false;
+//  }
 
   // get mean
   uint match_cnt = 0;
- for (uint i=0; i<points.size(); ++i){
+  for (uint i=0; i<points.size(); ++i){
 
-//  for (Observations::iterator it = )
+    //  for (Observations::iterator it = )
 
-    if (!point_valid[i])
+    if (!point_valid[i] || !other.point_valid[i])
       continue;
 
-//    if (!other.point_valid[i]){
-////      ROS_INFO("point %i invalid", i);
-//      continue;
-//    }
+    //    if (!other.point_valid[i]){
+    ////      ROS_INFO("point %i invalid", i);
+    //      continue;
+    //    }
 
-//    cout << "i: " << i << endl;
-//    cout << points[i] << endl;
-//    cout << other.points[i] << endl;
+    //    cout << "i: " << i << endl;
+    //    cout << points[i] << endl;
+    //    cout << other.points[i] << endl;
 
     tfc.add(points[i],other.points[i]);
     match_cnt++;
   }
 
 
- // since the MoCap confuses some points, only full measurements are used
-// ROS_INFO("matches: %i", match_cnt);
-  if (match_cnt < points.size())
+  // since the MoCap confuses some points, only full measurements are used
+  // ROS_INFO("matches: %i", match_cnt);
+  if (match_cnt < 3)//points.size())
     return false;
 
   t = tfc.getTransformation();
 
+
+
   if (trafo!=NULL) affine3fToXyzRpy(t,trafo);
+
+  if (residual!=NULL){
+
+    // get sum of distances from moved object to original
+
+    *residual = 0;
+    for (uint i=0; i<points.size(); ++i){
+
+      //  for (Observations::iterator it = )
+
+      if (!point_valid[i] || !other.point_valid[i])
+        continue;
+
+
+      Vector3f f = t*points[i];
+      float n = (f-other.points[i]).norm();
+
+
+      if (n>*residual)
+        *residual = n;
+//      *residual += (f-other.points[i]).norm()/match_cnt;
+    }
+
+    ROS_WARN("residual: %f", *residual);
+
+  }
 
   return true;
 

@@ -105,7 +105,7 @@ struct Mocap_object {
   bool isSameObject(Mocap_object& other, float dist_thres, float* max_dist = NULL);
 
   // trafo should be array of length 6 with (x,y,z,phi, theta, psi) (in rad)
-  bool getTrafoTo(Mocap_object& other, Eigen::Affine3f& t, float* trafo = NULL);
+  bool getTrafoTo(Mocap_object& other, Eigen::Affine3f& t, float* residual = NULL, float* trafo = NULL);
 
   // inverse of trafo is applied to other-object (if not NULL)
   double max_point_dist(Mocap_object& other, Eigen::Affine3f* trafo = NULL);

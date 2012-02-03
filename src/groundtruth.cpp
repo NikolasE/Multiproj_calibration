@@ -45,14 +45,21 @@ bool Groundtruth::getNextInstance(Mocap_object& obj){
 void Groundtruth::computePoses(){
   assert(model_loaded);
 
+  float residual;
+
+  ofstream off("/home/engelhar/Desktop/residual.txt");
+
   for (uint i=0; i<object_instances.size(); ++i){
     Mocap_object* mo = &object_instances[i];
-    mo->gt_trafo_valid = bag_base_object.getTrafoTo(*mo, mo->gt_trafo);
+    mo->gt_trafo_valid = bag_base_object.getTrafoTo(*mo, mo->gt_trafo, &residual);
+    off << residual << endl;
   }
+
+  off.close();
 
 }
 
-bool Groundtruth::loadBag(char* filename){
+bool Groundtruth::loadBag(const char* filename){
 
   assert(model_loaded);
 
@@ -70,7 +77,7 @@ bool Groundtruth::loadBag(char* filename){
   complete_msg_cnt = 0;
 
 
-//  ofstream off("/home/engelhar/ros/mocap/data/pos.txt");
+//
 
 
   BOOST_FOREACH(rosbag::MessageInstance const m, view)
@@ -104,42 +111,44 @@ bool Groundtruth::loadBag(char* filename){
 
     if (mo.valid_point_cnt == s)
       complete_msg_cnt++;
-//    if (mo.valid_point_cnt >= 3 && mo.valid_point_cnt < s )
-//      partial_msg_cnt++;
-    if (mo.valid_point_cnt < s)
+    if (mo.valid_point_cnt >= 3 && mo.valid_point_cnt < s )
+      partial_msg_cnt++;
+    if (mo.valid_point_cnt < 3)
       invalid_msg_cnt++;
 
     object_instances.push_back(mo);
   }
 
   uint total_msg_cnt = complete_msg_cnt+partial_msg_cnt+invalid_msg_cnt;
-  assert(total_msg_cnt == object_instances.size());
 
   ROS_INFO("Read %i msgs from %s",int(total_msg_cnt), filename );
   ROS_INFO("complete: %i, partial: %i, invalid: %i", int(complete_msg_cnt), int(partial_msg_cnt), int(invalid_msg_cnt));
 
+  assert(total_msg_cnt == object_instances.size());
+
+
 //  off.close();
 
-//  computePoses();
+  computePoses();
 
   file_idx = 0;
 
   return true;
 }
 
-void Groundtruth::readBagPropFile(char* filename){
+void Groundtruth::readBagPropFile(const char* filename){
   bag_base_object = Mocap_object();
   readPropFile(filename, bag_base_object);
   model_loaded = true;
 }
 
-void Groundtruth::readSimPropFile(char* filename){
+void Groundtruth::readSimPropFile(const char* filename){
   bag_sim_object = Mocap_object();
   readPropFile(filename, bag_sim_object);
   sim_model_loaded = true;
 }
 
-void Groundtruth::readPropFile(char* filename, Mocap_object& mo){
+void Groundtruth::readPropFile(const char* filename, Mocap_object& mo){
   ifstream iff; iff.open(filename);
   uint vertex_cnt; iff >> vertex_cnt;
 
