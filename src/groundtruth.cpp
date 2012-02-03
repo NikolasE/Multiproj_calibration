@@ -58,7 +58,7 @@ void Groundtruth::computePoses(){
     if (mo->gt_trafo_valid) valid_cnt++;
   }
 
-  ROS_INFO("valid %i", valid_cnt);
+  ROS_INFO("Valid after residual check %i", valid_cnt);
 
 //  off.close();
 

@@ -80,19 +80,16 @@ int  main (int argc, char** argv)
   Mocap_object mo;
 
 
+  Mocap_object init_object = gt.bag_sim_object;
+
   while (gt.getNextInstance(mo)){
 
     // quadcopter crashes afterwards :(
     if (gt.file_idx > 22000) break;
 
-
-
-//    bool valid = gt.bag_base_object.getTrafoTo(mo, trafo);
-
-
     Eigen::Affine3f trafo = mo.gt_trafo;
 
-    for (int iter = 1000 ; iter<=1000; iter += 200){
+    for (int iter = 1000 ; iter<= 1000; iter += 200){
 
 //      cout << "iter " << iter << endl;
 
@@ -102,8 +99,6 @@ int  main (int argc, char** argv)
       int id=0;
       id = sendObject(marker_pub, id, mo_sim, "gt_marker", 1,0,1);
 
-
-      Mocap_object init_object = gt.bag_sim_object;
       Optimizer optimizer;
       optimizer.setCamParams(&cams[0]);
       optimizer.setObject(&init_object); // has to be done before initOptimizer
@@ -118,10 +113,7 @@ int  main (int argc, char** argv)
 
         total_obs += obs_cnt;
 
-        if (obs_cnt > 0){
-//          ROS_INFO("cam %i with %i obs", int(i),obs_cnt);
-          optimizer.addCameraToGraph(cams[i]);
-        }
+        if (obs_cnt > 0){ optimizer.addCameraToGraph(cams[i]); }
 
         id = sendCam(marker_pub, cams[i], id,  "gt_marker_cam", 1,0,0);
         id = sendProjectionRays(marker_pub, cams[i], id, "gt_marker_proj", 0,0,1);
