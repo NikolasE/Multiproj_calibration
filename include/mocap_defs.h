@@ -43,7 +43,7 @@ struct Camera {
   g2o::VertexSE3* vertex;
   Observations obs;
 
-  Camera() {pose = Eigen::Affine3f::Identity(); }
+  Camera() {pose = Eigen::Affine3f::Identity(); vertex = NULL; }
 
   static const float c_width = 640;
   static const float c_height = 480;
@@ -66,6 +66,9 @@ struct Mocap_object {
 
   Eigen::Affine3f gt_trafo;
   bool gt_trafo_valid;
+
+
+  Mocap_object(){ vertices.clear();}
 
   void reset();
 

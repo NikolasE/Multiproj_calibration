@@ -112,9 +112,9 @@ int  main (int argc, char** argv)
 
       Optimizer optimizer;
       optimizer.setCamParams(&cams[0]);
-      optimizer.setObject(&init_object); // has to be done before initOptimizer
-      optimizer.initOptimizer();
 
+      optimizer.initOptimizer();
+      optimizer.addMocapObjectToGraph(init_object);
 
       int total_obs = 0;
 
@@ -124,14 +124,19 @@ int  main (int argc, char** argv)
 
         total_obs += obs_cnt;
 
-        if (obs_cnt > 0){ optimizer.addCameraToGraph(cams[i]); }
+        if (obs_cnt > 0){
+          optimizer.addCameraToGraph(cams[i], true);
+          optimizer.addProjections(cams[i], init_object);
+        }
+
 #ifndef NO_OUTPUT
         id = sendCam(marker_pub, cams[i], id,  "gt_marker_cam", 1,0,0);
         id = sendProjectionRays(marker_pub, cams[i], id, "gt_marker_proj", 0,0,1);
 #endif
       }
 
-      // TODO: use last pose as init
+//      ROS_INFO("obs_cnt: %i", total_obs);
+
       if (total_obs>=4 && mo.gt_trafo_valid){
 
         optimizer.optimize(iter);
