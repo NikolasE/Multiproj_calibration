@@ -39,7 +39,7 @@ public:
 
   void initOptimizer();
 
-  void optimize(int iter);
+  void optimize(int iter, bool verbose = false);
 
   // void getOptimizedObject(Mocap_object* new_obj);
   void getRelPose(Mocap_object& moved, Mocap_object& init);

@@ -33,9 +33,6 @@
 using namespace sensor_msgs;
 
 
-
-
-
 int  main (int argc, char** argv)
 {
 
@@ -59,7 +56,7 @@ int  main (int argc, char** argv)
   pcl::getTransformation(0,0,5,M_PI,0,0,cam.pose);  cam.id = cams.size(); cams.push_back(cam);
 //  pcl::getTransformation(0,2,5,M_PI,0,0,cam.pose); cam.id = cams.size();
 //  cams.push_back(cam);
-  pcl::getTransformation(-5,1,3,M_PI/2,M_PI,M_PI/2,cam.pose); cam.id = cams.size();  cams.push_back(cam);
+  pcl::getTransformation(-5,0,3,M_PI/2,M_PI,M_PI/2,cam.pose); cam.id = cams.size();  cams.push_back(cam);
   pcl::getTransformation(0,5,3,M_PI/2,0,0,cam.pose); cam.id = cams.size();  cams.push_back(cam);
 
   Groundtruth gt;
@@ -72,7 +69,7 @@ int  main (int argc, char** argv)
   assert(argc>2);
 
 
-  gt.skip = 1;
+  gt.skip = 10;
   gt.file_idx = atoi(argv[1]);//8000; // skip boring start of file
 
   Mocap_object mo;
@@ -81,10 +78,18 @@ int  main (int argc, char** argv)
   ofstream gt_of("data/gt.txt");
   ofstream est_of("data/estimated.txt");
 
+  Optimizer optimizer;
+  optimizer.setCamParams(&cams[0]);
+
+  optimizer.initOptimizer();
+  optimizer.addCamerasToGraph(cams, false); // only fix first cam
+
 
   Mocap_object init_object = gt.bag_sim_object;
 
-  while (gt.getNextInstance(mo)){
+  while (gt.getNextInstance(mo) && gt.file_idx < atoi(argv[1]) + 1000 ){
+
+    Mocap_object init_object = gt.bag_sim_object;
 
     cout << gt.file_idx << endl;
 
@@ -110,11 +115,7 @@ int  main (int argc, char** argv)
       id = sendObject(marker_pub, id, mo_sim, "gt_marker", 1,0,1);
 #endif
 
-      Optimizer optimizer;
-      optimizer.setCamParams(&cams[0]);
 
-      optimizer.initOptimizer();
-      optimizer.addMocapObjectToGraph(init_object);
 
       int total_obs = 0;
 
@@ -124,10 +125,10 @@ int  main (int argc, char** argv)
 
         total_obs += obs_cnt;
 
-        if (obs_cnt > 0){
-          optimizer.addCameraToGraph(cams[i], true);
-          optimizer.addProjections(cams[i], init_object);
-        }
+//        if (obs_cnt > 0){
+//          // optimizer.addCameraToGraph(cams[i], true);
+//          optimizer.addProjections(cams[i], init_object);
+//        }
 
 #ifndef NO_OUTPUT
         id = sendCam(marker_pub, cams[i], id,  "gt_marker_cam", 1,0,0);
@@ -139,15 +140,20 @@ int  main (int argc, char** argv)
 
       if (total_obs>=4 && mo.gt_trafo_valid){
 
-        optimizer.optimize(iter);
-        init_object.getPoseFromVertices();
+        optimizer.addMocapObjectToGraph(init_object);
+        optimizer.addProjections(cams, init_object);
 
 
-        Eigen::Affine3f error;
-        Eigen::Affine3f t;
-        gt.bag_sim_object.getTrafoTo(init_object,t);
-        Groundtruth::writePoseToFile(gt.file_idx, t, &est_of);
-        error = trafo.inverse()*t;
+
+        // optimizer.optimize(iter);
+//         init_object.getPoseFromVertices();
+
+
+//        Eigen::Affine3f error;
+//        Eigen::Affine3f t;
+//        gt.bag_sim_object.getTrafoTo(init_object,t);
+//        Groundtruth::writePoseToFile(gt.file_idx, t, &est_of);
+//        error = trafo.inverse()*t;
 
 //        double dist = error.translation().norm();
 //        if (dist<0.02){
@@ -176,10 +182,6 @@ int  main (int argc, char** argv)
 #endif
       }
 
-
-
-
-
       //      if (!mo.gt_trafo_valid)
       //        ROS_WARN("gt-trafo invalid");
 
@@ -187,10 +189,59 @@ int  main (int argc, char** argv)
       ros::Duration(atof(argv[2])).sleep();
 #endif
     }
-
     //    cout << gt.getFilePosition() << endl;
     //    ros::Duration(atof(argv[2])).sleep();
   }
+
+
+  // move cam poses a bit
+  // don't move first cam!
+
+  vector<Eigen::Matrix4f> orig;
+  orig.resize(cams.size());
+  for (uint i=0; i<cams.size(); ++i){
+    orig[i] = cams[i].vertex->estimate().to_homogenious_matrix().cast<float>();
+  }
+
+  for (uint i=1; i<cams.size(); ++i){
+
+    Eigen::Quaterniond eigen_quat(cams[i].pose.rotation().cast<double>());
+    Eigen::Vector3d translation(cams[i].pose.translation()[0]+1, cams[i].pose.translation()[1]+0.5,cams[i].pose.translation()[2]+0.2);
+    g2o::SE3Quat(eigen_quat, translation);
+
+    cams[i].vertex->setEstimate(g2o::SE3Quat(eigen_quat, translation));
+  }
+
+
+  optimizer.optimize(1000, true);
+
+  for (uint i=0; i<10; ++i)
+    optimizer.optimize(100, true);
+
+
+  vector<Eigen::Matrix4f> estimated;
+  estimated.resize(cams.size());
+  for (uint i=0; i<cams.size(); ++i){
+    estimated[i] = cams[i].vertex->estimate().to_homogenious_matrix().cast<float>();
+  }
+
+  cout << "diff between cams" << endl;
+  for (uint i=0; i<cams.size()-1; ++i){
+    for (uint j=i+1; j<cams.size(); ++j){
+      ROS_INFO("dist %i %i", i,j);
+      Eigen::Matrix4f d_orig =  orig[i].inverse()*orig[j];
+      Eigen::Matrix4f d_est =  estimated[i].inverse()*estimated[j];
+      cout << d_orig << endl;
+      cout << d_est << endl;
+
+      cout << "dist between rel poses:" << endl;
+      cout << d_orig.inverse()*d_est << endl;
+
+    }
+  }
+
+
+
 
   return 0;
 
