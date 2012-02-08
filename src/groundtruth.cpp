@@ -32,6 +32,15 @@ bool Groundtruth::getNextSimInstance(Mocap_object& obj){
 
 }
 
+void Groundtruth::writePoseToFile(double time, Eigen::Affine3f trafo, ofstream* off){
+
+  Eigen::Quaternionf quat(trafo.rotation());
+  off->setf(ios::fixed,ios::floatfield);
+  *off << time << "   " << trafo.translation()[0] << "  " << trafo.translation()[1] << "  " << trafo.translation()[2] << "    ";
+  *off << quat.x() << " " << quat.y() << " " << quat.z() << " " << quat.w() << endl;
+
+}
+
 
 bool Groundtruth::getNextInstance(Mocap_object& obj){
    if (file_idx>= object_instances.size())

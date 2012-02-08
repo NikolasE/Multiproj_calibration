@@ -42,6 +42,8 @@ struct Groundtruth {
   Mocap_object bag_base_object;
   Mocap_object bag_sim_object;
 
+  static void writePoseToFile(double time, Eigen::Affine3f trafo, ofstream* off);
+
 private:
 
 

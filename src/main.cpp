@@ -39,12 +39,13 @@ using namespace sensor_msgs;
 int  main (int argc, char** argv)
 {
 
+// #define NO_OUTPUT
 
-
+#ifndef NO_OUTPUT
   ros::init(argc, argv, "g2o_mocap");
   ros::NodeHandle n;
   ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 10);
-
+#endif
 
 #define QUADCOPTER
 
@@ -55,21 +56,18 @@ int  main (int argc, char** argv)
 
   vector<Camera> cams;
   Camera cam;
-  pcl::getTransformation(0,0,5,M_PI,0,0,cam.pose);
-  cam.id = cams.size();
-  cams.push_back(cam);
-  pcl::getTransformation(0,2,5,M_PI,0,0,cam.pose); cam.id = cams.size();
-  cams.push_back(cam);
-  pcl::getTransformation(-5,1,3,M_PI/2,M_PI,M_PI/2,cam.pose); cam.id = cams.size();
-  cams.push_back(cam);
+  pcl::getTransformation(0,0,5,M_PI,0,0,cam.pose);  cam.id = cams.size(); cams.push_back(cam);
+//  pcl::getTransformation(0,2,5,M_PI,0,0,cam.pose); cam.id = cams.size();
+//  cams.push_back(cam);
+  pcl::getTransformation(-5,1,3,M_PI/2,M_PI,M_PI/2,cam.pose); cam.id = cams.size();  cams.push_back(cam);
+  pcl::getTransformation(0,5,3,M_PI/2,0,0,cam.pose); cam.id = cams.size();  cams.push_back(cam);
 
   Groundtruth gt;
   gt.readBagPropFile("/home/engelhar/ros/mocap/data/quadrotor.prop");
-  gt.readSimPropFile("/home/engelhar/ros/mocap/data/foo.prop");
+  gt.readSimPropFile("/home/engelhar/ros/mocap/data/sim.prop");
   gt.loadBag("/home/engelhar/ros/mocap/data/2012-01-18-11-30-27.bag");
 
 
-//  return 0;
 
   assert(argc>2);
 
@@ -80,24 +78,37 @@ int  main (int argc, char** argv)
   Mocap_object mo;
 
 
+  ofstream gt_of("data/gt.txt");
+  ofstream est_of("data/estimated.txt");
+
+
   Mocap_object init_object = gt.bag_sim_object;
 
   while (gt.getNextInstance(mo)){
+
+    cout << gt.file_idx << endl;
+
+    if (!mo.gt_trafo_valid) continue;
 
     // quadcopter crashes afterwards :(
     if (gt.file_idx > 22000) break;
 
     Eigen::Affine3f trafo = mo.gt_trafo;
 
-    for (int iter = 1000 ; iter<= 1000; iter += 200){
+    Groundtruth::writePoseToFile(gt.file_idx, trafo, &gt_of);
 
-//      cout << "iter " << iter << endl;
+
+    //for (int iter = 2000 ; iter<= 1000; iter += 200)
+    int iter = 100;
+    {
 
       Mocap_object mo_sim = gt.bag_sim_object;
       mo_sim.moveObject(trafo);
 
+#ifndef NO_OUTPUT
       int id=0;
       id = sendObject(marker_pub, id, mo_sim, "gt_marker", 1,0,1);
+#endif
 
       Optimizer optimizer;
       optimizer.setCamParams(&cams[0]);
@@ -109,14 +120,15 @@ int  main (int argc, char** argv)
 
       for (uint i=0; i<cams.size(); ++i){
 
-        int obs_cnt = sim_.computeObservations(&mo_sim,&cams[i],true);
+        int obs_cnt = sim_.computeObservations(&mo_sim,&cams[i],false);
 
         total_obs += obs_cnt;
 
         if (obs_cnt > 0){ optimizer.addCameraToGraph(cams[i]); }
-
+#ifndef NO_OUTPUT
         id = sendCam(marker_pub, cams[i], id,  "gt_marker_cam", 1,0,0);
         id = sendProjectionRays(marker_pub, cams[i], id, "gt_marker_proj", 0,0,1);
+#endif
       }
 
       // TODO: use last pose as init
@@ -124,17 +136,51 @@ int  main (int argc, char** argv)
 
         optimizer.optimize(iter);
         init_object.getPoseFromVertices();
+
+
+        Eigen::Affine3f error;
+        Eigen::Affine3f t;
+        gt.bag_sim_object.getTrafoTo(init_object,t);
+        Groundtruth::writePoseToFile(gt.file_idx, t, &est_of);
+        error = trafo.inverse()*t;
+
+//        double dist = error.translation().norm();
+//        if (dist<0.02){
+//         // ROS_INFO("err: %f", dist);
+//        }
+//        else
+//          if (dist < 0.07)
+//            ROS_WARN("err: %f", dist);
+//          else {
+//            ROS_ERROR("err: %f", dist);
+//            cout << "est: " << endl << t.translation() << endl;
+//            cout << "gt:  " << endl << trafo.translation() << endl;
+//
+//            char foo; cin >> foo;
+//            // cv::waitKey(0);
+//          }
+
+
+#ifndef NO_OUTPUT
         id = sendObject(marker_pub, id, init_object, "gt_marker", 0,1,0);
+#endif
       }else
       {
+#ifndef NO_OUTPUT
         id = sendObject(marker_pub, id, gt.bag_sim_object, "gt_marker", 1,0,0);
+#endif
       }
 
-      if (!mo.gt_trafo_valid)
-        ROS_WARN("gt-trafo invalid");
 
 
+
+
+      //      if (!mo.gt_trafo_valid)
+      //        ROS_WARN("gt-trafo invalid");
+
+#ifndef NO_OUTPUT
       ros::Duration(atof(argv[2])).sleep();
+#endif
     }
 
     //    cout << gt.getFilePosition() << endl;
