@@ -23,6 +23,8 @@
 #include "cluster.h"
 #include "evaluation.h"
 #include "groundtruth.h"
+#include "extrinsic_calibration.h"
+
 
 #include <algorithm>
 #include <time.h>
@@ -35,6 +37,9 @@ using namespace sensor_msgs;
 
 int  main (int argc, char** argv)
 {
+
+
+
 
 // #define NO_OUTPUT
 
@@ -53,15 +58,41 @@ int  main (int argc, char** argv)
 
   vector<Camera> cams;
   Camera cam;
-  pcl::getTransformation(0,0,5,M_PI,0,0,cam.pose);  cam.id = cams.size(); cams.push_back(cam);
-//  pcl::getTransformation(0,2,5,M_PI,0,0,cam.pose); cam.id = cams.size();
-//  cams.push_back(cam);
-  pcl::getTransformation(-5,0,3,M_PI/2,M_PI,M_PI/2,cam.pose); cam.id = cams.size();  cams.push_back(cam);
-  pcl::getTransformation(0,5,3,M_PI/2,0,0,cam.pose); cam.id = cams.size();  cams.push_back(cam);
+  pcl::getTransformation(0,0,5,M_PI,0,0,cam.pose);              cam.id = cams.size(); cams.push_back(cam);
+  pcl::getTransformation(0,2,5,M_PI,0,0,cam.pose);              cam.id = cams.size(); cams.push_back(cam);
+  pcl::getTransformation(-5,0,3,M_PI/2,M_PI,M_PI/2,cam.pose);   cam.id = cams.size(); cams.push_back(cam);
+  pcl::getTransformation(0,5,3,M_PI/2,0,0,cam.pose);            cam.id = cams.size(); cams.push_back(cam);
+
+
+#if 0
+  ExtrinsicCalibration ec;
+  ec.setBagFile("/home/engelhar/ros/mocap/data/2012-01-18-11-30-27.bag");
+  ec.setPropFile("/home/engelhar/ros/mocap/data/quadrotor.prop");
+  ec.setSimFile("/home/engelhar/ros/mocap/data/sim.prop");
+  ec.addCameras(&cams);
+
+  ec.init();
+  ec.run(8000, 10);
+
+  return 0;
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   Groundtruth gt;
   gt.readBagPropFile("/home/engelhar/ros/mocap/data/quadrotor.prop");
-  gt.readSimPropFile("/home/engelhar/ros/mocap/data/sim.prop");
+  gt.readSimPropFile("/home/engelhar/ros/mocap/data/quadrotor.prop"); // sim.prop
   gt.loadBag("/home/engelhar/ros/mocap/data/2012-01-18-11-30-27.bag");
 
 
@@ -87,7 +118,7 @@ int  main (int argc, char** argv)
 
   Mocap_object init_object = gt.bag_sim_object;
 
-  while (gt.getNextInstance(mo) && gt.file_idx < atoi(argv[1]) + 1000 ){
+  while (gt.getNextInstance(mo) && gt.file_idx < atoi(argv[1]) + 10000 ){
 
     Mocap_object init_object = gt.bag_sim_object;
 
