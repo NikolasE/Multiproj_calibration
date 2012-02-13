@@ -72,14 +72,14 @@ void Optimizer::optimize(int iter, bool verbose){
 
   optimizer->computeActiveErrors();
 
-  double achi = optimizer->activeChi2();
-  printf("Optimization with %i nodes and %i edges \n", (int)optimizer->vertices().size(),(int) optimizer->edges().size());
-  std::cerr << "Start   chi2= " << achi << " Normalized chi2= "  << achi / optimizer->edges().size() << std::endl;
+//  double achi = optimizer->activeChi2();
+//  printf("Optimization with %i nodes and %i edges \n", (int)optimizer->vertices().size(),(int) optimizer->edges().size());
+//  std::cerr << "Start   chi2= " << achi << " Normalized chi2= "  << achi / optimizer->edges().size() << std::endl;
 
   optimizer->optimize(iter);
 
-  achi = optimizer->activeChi2();
-  std::cerr << "Final   chi2= " << achi << " Normalized chi2= "  << achi / optimizer->edges().size() << std::endl;
+//  achi = optimizer->activeChi2();
+//  std::cerr << "Final   chi2= " << achi << " Normalized chi2= "  << achi / optimizer->edges().size() << std::endl;
 
   optimizer->save("/home/engelhar/Desktop/after.g2o");
 }
